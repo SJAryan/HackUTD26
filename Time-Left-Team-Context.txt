@@ -1,0 +1,319 @@
+TIME LEFT | Shared context for teammates and Claude Code
+HackUTD 2026 • November 7–8 • Dallas time
+Read this first. The project scope below incorporates the latest State Farm and Spacetime conversations. Use the issue backlog for assignments and deadlines. Verify progress against the current repo and running app; the screenshot establishes the starter layout only. This document describes intended behavior. Test results belong in the issue or PR once observed.
+
+HOW TO START A NEW CHAT
+Paste: “Use the attached Time Left context. I’m member [letter]. Tell me what I own, who needs my output, and the first unfinished issue to take. If you have repo access, inspect the current branch and issue status first. Show how I can verify my deliverable on the same demo case as the team.”
+For Claude Code, use the implementation prompt under PASTE INTO EACH CLAUDE CODE SESSION and supply the role letter. For a general chat without repo access, provide the active issue, commit or latest handoff when asking about progress.
+
+THE TEAM IN PLAIN ENGLISH
+A | Backend and integration. You own what the system records and who can change or see it. Implement the SpacetimeDB module, authorized views, subscriptions, atomic reservations, job thread, seeds and deployment. You own shared files, bindings and integration. Hand B and D the working connection, roles and generated types; import C’s dispatch rules. First ticket TL-01. Proof: two connected sessions see the same change; only one can reserve the last battery.
+B | Photon messaging. You own the team handset and the bridge between real conversations and Spacetime. Receive the resident's report, extract supported facts, clarify ambiguous inputs, and return an ETA after dispatch. Give A a replayable event and D a real example. First ticket TL-02. Proof: one real text changes a case and the intended resident gets the committed ETA.
+C | Aryan, dispatch logic and live pitch. You own the answer to “Which compatible battery and driver can actually get there before the household’s reported backup runs out?” Implement pure rules and two incident fixtures; test delays, unknowns and silent households. Give A executable functions and D exact expected numbers. First ticket TL-03. Proof: show why a route changes and how many minutes remain on the alternate.
+D | Frontend, judging experience and submission. You own the coordinator, resident and driver screens, including both ends of their conversation. Show live updates, assistance status, preparedness signup and the voluntary contact request. Record the video, rehearse the live path, and own Devpost. First tickets TL-04 and TL-10. Proof: judge and teammate can converse from separate authorized sessions; video and public links work signed out.
+Handoff in one line: B hears the resident; C computes the options; A reserves and synchronizes the job; D makes it usable. A owns chat storage and permissions, D owns the chat UI, B owns external Photon messaging. Breadth of scope stays inside these four lanes.
+
+WHY THESE TRACKS
+State Farm liked the concept and asked for broader disaster coverage and a way to attract prospective customers. Lead with a tornado outage; also run a freeze through the same engine. Show what joining the preparedness roster gives someone, then let them voluntarily request contact about coverage after receiving help. Record a consented lead as the measurable business outcome. Do not claim insurance enrollment or conversion from a demo click.
+Spacetime liked the concept and asked to keep the information in the database and let customers interact with drivers live. The strongest proof is a resident asking about the side entrance, the assigned driver responding from another device, and both seeing the exchange immediately. Use the last-battery race for technical Q&A. Majority backend on Spacetime and public GitHub repo are track requirements. Team already has the booth access code. Sponsor slide offered 100,000 TeV of Maincloud credit per GitHub account (about $38); confirm redemption in the account, and keep credentials private.
+Photon's reps left before the team could get feedback. Use the beta API for a real consenting test handset, clarify device runtime and answer a follow-up using committed state. Test actual channel access first. Voice is a stretch goal. Cash and Photon credits listed as prizes are not build funds. Use only features confirmed on your test line.
+Organizer confirmed up to three company tracks plus one HackUTD track. Target State Farm, Build on Spacetime and Photon subject to demonstrated eligibility. No separate app is needed for each sponsor.
+
+THE MOMENT TO SHOW
+Use a synthetic household whose equipment display reports 30–60 minutes. A coordinator can see why a delayed route is now too late on the conservative estimate. After assignment the judge can type “Can you use the side entrance?” and see Ana reply. Show that a silent household still has a callback owner. A resident who skips State Farm outreach receives the same assistance. Numbers describe equipment readiness and arrival estimates; avoid a medical danger countdown or claims about lives saved.
+
+TIME LEFT | Team build plan and GitHub issues
+Saturday Nov 7 to Sunday Nov 8, 2026 • Dallas time
+Give this same file to all four Claude Code sessions. Tell each session its role letter. Keep this plan in docs/ once A has shared the base commit. This is the current build scope following both sponsor conversations.
+
+WHAT WE ARE SHIPPING
+Time Left helps a household get the right assistance during a disaster and stay in direct contact with the person delivering it. A resident reports a need. A coordinator matches a compatible resource and driver against the household's reported time window. Resident and driver exchange updates on the same assignment. A missed reply becomes someone's follow-up task.
+Use one response engine for two incidents. Lead with a tornado-related outage: “My backup shows 30–60 minutes left. Can the driver reach the side entrance?” Show a freeze as the second playable incident with its own seed data. Disaster type supplies context; logistics depend on the reported need, available resources and travel time. Demonstrate preparedness before an incident and optional State Farm agent contact after resolution. Treat contact requests as prototype leads; a lead is not a sold policy. Keep emergency help available whether or not someone opts in. Skip real quotes, automatic claims and a live insurance integration.
+Finish line: from a clean reset, a teammate on a real Photon test line can change a case, a coordinator assigns one battery, the resident and driver talk in real time, and the resident can request an agent follow-up after delivery. A second household that never replies stays assigned for outreach. Public repo contains runnable instructions and synthetic data.
+
+START HERE
+The screenshot shows .claude/skills and references, backend/, frontend/, .env.example, .gitignore, AGENTS.md, CLAUDE.md and SETUP.md. It does not show folder contents or a working deployment. Inspect git status and both directories before scaffolding. Preserve existing edits and check which untracked setup files belong in the base. Never commit access codes, real phone numbers, tokens or customer details.
+A alone owns shared manifests, lockfiles, schema, client bindings and merges. B owns backend/bridge/. C (Aryan) owns the domain rules inside the Spacetime module, fixtures/ and sim/. D owns frontend/ excluding generated bindings, plus docs/demo/. These are proposed paths; A posts the actual imports and directories once. Use one clone and one feature branch per teammate. Start from A's shared SHA. Reuse the existing skills, including karpathy-guidelines. Avoid four separate scaffolds.
+GitHub setup: create the tickets below using the TL identifier in each title. TL IDs stay stable regardless of GitHub issue numbers. Assign one human per issue. Board columns: Ready, Doing, Review, Done, Blocked. Mark fixture-backed UI visibly during integration. Close a ticket with a commit or PR and its passing acceptance proof. A coordinates root dependency changes; teammates can develop against the agreed fixture while waiting for bindings.
+
+PASTE INTO EACH CLAUDE CODE SESSION
+“I'm member [A/B/C/D]. Read this TXT, CLAUDE.md and AGENTS.md. Inspect the actual repo, current branch, setup and commands. Tell me my first ticket and acceptance check, then implement it in my team's assigned paths. Use the repo's installed Karpathy guidelines. Preserve other people's changes. Work on one ticket at a time. If an interface is missing, send its owner the exact input/output you need and continue on the fixture. Report the files changed, exact verification command, actual output and remaining dependency. Identify each integration as live, fixture or unverified. Give me the PR handoff; I handle GitHub/Devpost unless I explicitly delegate it.”
+A starts TL-01; B starts TL-02; C starts TL-03; D starts TL-04 and opens TL-10 early. A shares base SHA, connection commands, role setup and bindings. B shares one sanitized inbound event and a way to replay it. C shares the expected calculation. D shares three URLs and a screenshot at each integration gate.
+
+CONTRACT EVERYONE BUILDS AGAINST
+Use project-level operations; A maps names to generated bindings. Every mutation carries a stable request/event ID, incident ID and observed time. Resolve role and identity on the server. Each household belongs to an incident; each assignment binds one household, driver and resource. Private rows for contact bindings, cases, check-ins, incident/route data, jobs, job messages, callbacks, contact requests and outbound intents live in SpacetimeDB. Keep secrets in the environment. Scoped subscriptions serve coordinator, assigned driver and enrolled resident. Store only synthetic personal details in the demo; provision test identities separately.
+B -> A: ingestCheckin(eventId, householdBinding, observedAt, text/evidence, extracted fields). Unknown runtime stays unknown. Confirm a driver-reported road delay before applying it. Use AI for extraction with the supporting words attached; C's deterministic logic computes margins; human confirms dispatch.
+D -> A: reserve(jobRequestId, caseId, assetId, driverId, expectedVersion); postJobMessage(jobId, clientMessageId, text); updateJob(jobId, expectedVersion, status); requestAgentContact(consentId). Return committed result, duplicate or explicit conflict. Derive sender identity from the session. C -> A: pure evaluateOptions returns compatibility, ready time, margin range, lane and reason. A -> B: consume committed outbound intents; report provider state. Client subscriptions are the source for chat and job status; Photon is an external communication channel. No second application database.
+
+SCHEDULE AND DECISIONS
+Approximate start 5 PM Saturday based on the 4:52 PM screenshot. If later, start at the first unproven gate and protect the two Devpost deadlines.
+Sat now–5:30 PM: A publishes inspected base; B tests Photon on a real phone; C locks the two incidents; D sketches the three role screens and checks the live Devpost form.
+5:30–7 PM: publish a row update across two sessions, real Photon ping, passing fixture math, clickable screens. If Photon provisioning stalls after 30 minutes, B supplies a labeled replay to unblock the team and keeps investigating separately.
+7–9 PM: integrate first tornado case, reservation, customer-to-driver message and reply. D records a rough take immediately. A/B/C/D use the same SHA. If behind, cut map, voice and analytics polish.
+9–10:30 PM: finish opt-in, silent follow-up and freeze seed. D submits initial Devpost entry by 10:30; B independently checks it. Official initial checkpoint is 11 PM Saturday.
+10:30 PM–1 AM: finish live Photon round trip, race/privacy/retry tests and paired simulation. Cut secondary visuals before cutting the two-way conversation. A tags working build, D saves backup footage. Feature freeze at 1 AM except fixes for a broken required flow.
+1–7 AM: stagger rest; one pair fixes reproducible blockers, the other rests, then swap. Keep the tagged build deployable. If all gates pass, stop coding and rest.
+7–9 AM Sunday: clean reset on another laptop, run both incidents, collect measured results, record the Devpost video; verify event form for duration/hosting. 
+9–10 AM: D edits/uploads, C rehearses pitch, A verifies public repo and deploy, B independently checks video playback signed out and real phone channel.
+10–11 AM: rehearse live twice, submit final entry by 11 AM and save confirmation. 11 AM–noon: contingency for submission or broken links. Official deadline noon Sunday.
+
+GITHUB ISSUES | Copy each TL line as title and its paragraph as body
+P0 = needed for submission/demo. P1 = deepen the demo after P0 passes. “After” means required for final integration; fixture work may start earlier.
+
+TL-01 | Publish shared scaffold and interface contract
+A • P0 • Start now. Inspect both app folders; reuse working pieces. Put the TS Spacetime module under backend/ and React TS client under frontend/ or publish actual starter paths. Use private booth access for Maincloud. Supply install/dev/seed commands, example env names, role setup, fixtures and generated binding import. Done when a second teammate connects from a fresh checkout and sees a seeded row change via subscription.
+
+TL-02 | Prove Photon 2.0 on one team handset
+B • P0 • Start now. Provision the beta project and follow the first-reply guide. One consenting teammate initiates the shared iMessage conversation. Capture redacted evidence of a real round trip, record channel, connection method and failures. Send A/D a sanitized event plus replay fixture. If blocked, identify exact provider error and continue TL-08 locally. Never claim a replay qualifies as a live integration.
+
+TL-03 | Build two disaster fixtures and dispatch rules
+C/Aryan • P0 • Start now. Use a fixed incident clock, H17 plus one silent household, one compatible battery and driver Ana. At 02:00 H17 reports 30–60 minutes remaining. Ready at 02:13 yields +17 minimum margin. A confirmed 20-minute detour yields −3; alternate ready at 02:24 yields +6. +15 or more = Watch; below +15 = Act now. Evaluate runtime at observation time; handle stale, unknown and no compatible resource. Add second incident with distinct household/route IDs and conditions. Done when both seeds run through the same functions and a test confirms +17/−3/+6; report equipment runtime only.
+
+TL-04 | Build coordinator, resident and driver screens against the shared fixture
+D • P0 • Start now. Coordinator sees incident selector, prioritized case with evidence, compatible resource, assign action and callback queue. Resident sees assigned driver, ETA and job thread. Driver sees assigned stop, reply and arrived action. Make the three screens legible on laptop/projector and phone. Done when D can walk the three roles through the fixture; label fixture mode. Replace it with subscriptions in TL-07.
+
+TL-05 | Implement private state, views and atomic dispatch
+A • P0 • After TL-01; import TL-03 rules. Implement role provisioning, check-in ingestion, route confirmation, case/driver/resource reservations, active job versions, callback ownership and post-commit notification intents. One transaction checks availability, reserves all three entities and writes the job and intents. Done when two authenticated coordinators race for the last battery for different households: one success, one conflict, one job, no notification from the losing attempt. Generate bindings for B/D.
+
+TL-06 | Persist assignment-scoped two-way messages
+A • P0 • After TL-01; coordinate job IDs with TL-05. Authorize current job participants on the server. Store sender, time and stable message ID; provide scoped thread subscription. Support driver arrival and resident confirmation as distinct events. Done when both parties see ordered replies without refresh, reconnect restores history, repeated sends with the same ID appear once, and an unrelated household cannot read or write that thread.
+
+TL-07 | Connect the three screens and exercise the live conversation
+D • P0 • After TL-04/05/06. Use generated subscriptions; display sending, sent and conflict states. H17 asks “Can you use the side entrance?” Ana answers “Yes, I’ll meet you there.” Each role types from a separate authenticated session. Driver marks arrived; resident confirms receipt. Done when a second device sees both directions plus status without refreshing; keep the first screen recording.
+
+TL-08 | Connect Photon to check-ins, replies and current ETA
+B • P0 • After TL-02/05. Verify inbound events using the official method for the chosen transport. Bind only enrolled senders, deduplicate provider IDs, extract need/runtime with evidence and route ambiguity to review. A phone battery percentage alone triggers a clarification. Send confirmation and requested ETA only from the current committed job. Use stable outbound keys and track accepted/failed delivery; label ambiguous delivery for reconciliation. Done when real phone reply changes D’s board, a replay has no new effect, and the intended resident receives the assigned ETA. If live transport fails, demonstrate the web flow and identify the Photon gap on Devpost.
+
+TL-09 | Add preparedness enrollment and voluntary State Farm contact request
+D • P0 • After TL-04; A supplies reducer and private consent table alongside TL-06. Before the incident, a synthetic noncustomer creates a free preparedness profile with preferred contact and assistance need. After delivery, show “Ask a State Farm agent about coverage” with explicit consent and “Skip.” Save one private request; show a demo receipt and a count of distinct opt-ins. Done when opt-in creates one lead even on retry, Skip creates none, and both residents receive identical access to assistance. No real sales outreach or implied coverage. Measure opt-ins separately from readiness registrations.
+
+TL-10 | Create initial Devpost entry and verify checkpoint
+D • P0 • Start now, independent. Add all four members, working project name, short description and required event fields. Check submission rules and video requirements in the actual form; complete the initial submission action by 10:30 PM. B verifies status and team roster. Done when the team captures the initial-entry confirmation before the 11 PM checkpoint.
+
+TL-11 | Handle silent households and compare dispatch policies
+C • P0 for silent path; P1 for scale benchmark • After TL-03/05. A implements scheduled follow-up with owner/due time; C verifies a silent case stays visible through retry and a coordinator can claim it. No response gives unknown evidence. For benchmark, replay the same seeded 200 households, arrivals and resources for first-come-first-served and margin-based dispatch. Record number delivered before reported deadline among known-deadline cases, unknown cases and unassigned cases. Done when callback is demonstrable and metric counts reconcile; share actual results or omit benchmark claims.
+
+TL-12 | Rehearse integrated scenario and publish reproducible build
+A • P0 • After TL-07/08/09 and silent path in TL-11. Test fresh checkout, deployed module, authenticated roles and reset-to-seed. Verify two disasters, race, unrelated user denial, duplicate inbound, stale ETA, reconnect and decline-coverage paths. Keep secrets outside the public repo; document backend ownership, actual commands, demo identities setup and known gaps. D records a clean backup and B checks from another device. Done with public repo, known-good SHA, reproducible reset and explicit live/replay status.
+
+TL-13 | Record Devpost video, rehearse live judging and submit
+D owns submission; C presents; A resets and serves as backup operator; B runs handset and checks links • P0 • Start storyboard immediately; finish after TL-12. Video: open with the resident's request, cut to dispatch/reordered queue, show two-way driver reply, then receipt and optional agent contact. Show second incident and one measured result if available. Live: let the judge send the side-entrance question; driver replies from another device. Have the captured run available if venue connectivity drops. Finish form with public repo, accessible video, four team members, State Farm/Spacetime/Photon selections where eligible and up to one appropriate HackUTD track. Verify signed-out playback and submission confirmation by 11 AM Sunday.
+
+TL-14 | Optional voice escalation for missed check-in
+B • P1 • Only after TL-08/12 pass and the test line supports voice. Call only a consenting team test identity; persist attempt/outcome and human callback ownership. Done when a real call reaches the device and updates the case. Otherwise omit voice and its prize claim. Cut this issue first if the schedule slips.
+
+DEMO RESET AND HANDOFF
+A resets a demo-only incident namespace to a known seed and creates scoped role sessions. B verifies the correct test line and routes only the approved live identity; the simulation never fans out to real numbers. D opens coordinator on projector, resident and driver on separate sessions. C narrates: “Can Ana reach this household before its reported backup runs out?” Run check-in, assign, resident message, driver response, receipt, optional contact. Switch incident and show the silent household with an owner. Team can run the reservation race separately if Spacetime asks for deeper proof.
+Every handoff includes issue ID, branch/SHA, one exact command, input, expected vs actual result, live vs fixture status, and next owner. A merges small PRs when shared interfaces work. If running late, preserve the phone check-in, assignment, two-way thread, second incident, consent path and both submissions. Defer voice, custom maps, extra hazard types and UI polish beyond the demonstrated path.
+
+References
+HackUTD 2026 schedule and challenges: https://zeroday.hackutd.co/
+Photon beta first reply: https://photon.codes/docs/beta/get-started/imessage
+SpacetimeDB TypeScript quickstart: https://spacetimedb.com/docs/quickstarts/typescript/
+The Photon booth review was unavailable. Its Notion guidelines could not be verified here; use the team's actual dashboard and submission form to check access and eligibility.
+
+TECHNICAL REFERENCE | Implementation detail for the same issues
+
+Dispatch logic and the canonical demo
+-------------------------------------
+
+Store UTC timestamps. For new evidence, anchor bounds to the observed-at time, normally the
+reply time. Ask for clarification if the message describes an older reading ambiguously. Store
+absolute deadlines once. A duplicate event cannot restart the clock.
+
+deadline_lo = observed_at + reported_lower_minutes
+deadline_hi = observed_at + reported_upper_minutes      (if bounded)
+at_asset    = max(now, driver_free_at) + travel(driver_free_location, asset_location)
+depart      = max(at_asset, asset_free_at) + pickup_minutes
+ready_at    = depart + travel(asset_location, home) + setup_minutes
+margin_lo   = deadline_lo - ready_at
+margin_hi   = deadline_hi - ready_at                    (if bounded)
+
+Evaluate compatible driver, resource and route combinations. Show the selected option and the
+best available alternative separately. Under 30 minutes has a zero lower bound. Two or more
+hours has no finite upper bound. Use an appointment or pickup target only when confirmed. For a
+job already in progress, use its last progress and ETA instead of restarting the whole trip on
+every refresh.
+
+Silent
+  Rule — The current check-in round is overdue without a verified response. Preserve last
+  evidence, current risks, callback owner and due time.
+
+Unknown
+  Rule — A reply or first check-in lacks an actionable time window. Keep a clarification task
+  and owner. Five minutes is a configurable demo follow-up interval.
+
+Act now
+  Rule — Known evidence with conservative margin under 15 minutes, or an unresolved case needing
+  a resource with none eligible. Surface uncovered work even when another lane tracks contact.
+
+Watch
+  Rule — Known evidence with best conservative margin ≥15 minutes.
+
+Contact, deadline evidence and assistance are independent fields. Compute coverage from distinct
+households with a verified resident or authorized proxy reply in the selected window divided by
+all enrolled households in the incident. Show open needs and overdue callbacks separately. An
+operator can override a lane with an audited reason. A scheduled reducer refreshes policy
+transitions and checks due follow-ups. Subscribe clients to changes and use display-side ticks
+between sweeps.
+
+Worked example. At 02:00 the household reports 30–60 minutes of backup, giving a reported window
+of 02:30–03:00. Route R4 originally allows setup at 02:13, so its margin is +17…+47. A confirmed
+20-minute detour moves R4 to 02:33, or −3…+27. A compatible alternate route ready at 02:24
+offers +6…+36. On the route comparison, show R4 changing from +17 to −3. On the household card,
+the best option changes from +17 to +6 and the case moves from Watch to Act now. If every route
+misses the lower estimate, show the shortfall and a manual escalation. Seed times relative to
+the live report for judging and use a fixed clock for replay.
+
+Architecture, contracts and ownership
+-------------------------------------
+
+Use the Spacetime React + TypeScript scaffold. Run spacetime dev --template react-ts, record
+package/CLI versions, and commit the lockfile. One person owns the schema and generated
+bindings. Use the Spacetime booth access code in the sponsor’s onboarding flow, then publish a
+shared module. The participant slide separately offers 100,000 TeV of Maincloud credit,
+approximately $38 per GitHub account, via the leaflet and HACKUTD2026. Keep the booth code,
+provider credentials, phone identities and real destinations outside the public repo. Spacetime
+React quickstart [10] · Event challenge statements [11]
+
+A · Spacetime
+  Owns — spacetimedb/src/, schema, roles, scheduler, reducers, outbox, generated
+  src/module_bindings/.
+  First integration proof — Two signed-in clients see one seeded update. One committed
+  reservation appears only to the assigned driver.
+
+B · Photon and AI
+  Owns — bridge/, number setup, real conversations, signed webhooks, bounded AI extraction, send
+  worker.
+  First integration proof — Shared-line tester initiates and receives a real answer. Save a
+  redacted sample and test its replay.
+
+C · Rules and simulator
+  Owns — spacetimedb/src/domain/, sim/, fixtures/. Pure TypeScript rules run in the module and
+  simulator. Aryan is a good fit for this role and the technical explanation.
+  First integration proof — Prove the +17, −3 and +6 calculations. Deliver a versioned fixture
+  to A and D.
+
+D · UI and demos
+  Owns — React src/, coordinator/driver routes, one evidence timeline, reset, video and live
+  rehearsals.
+  First integration proof — One household card shows evidence source, options, margin, callback
+  owner and committed job.
+
+All four can use Claude Code on separate areas. Assign the two extra Codex sessions to reviewing
+race/retry logic and running a clean demo checkout. A schema change includes regenerated
+bindings and a message to all owners. Integrate one complete case before expanding the UI.
+
+Dispatch event sequence
+1. Test handset → Photon 2.0: Driver reports a detour
+2. Photon 2.0 → Node bridge: Signed inbound event
+3. Node bridge → SpacetimeDB: Save source and proposed change
+4. SpacetimeDB → Coordinator: Report awaiting review
+5. Coordinator → SpacetimeDB: Confirm route delay
+6. SpacetimeDB → Coordinator: Recomputed route margins
+7. Coordinator → SpacetimeDB: Reserve eligible unit and driver
+8. SpacetimeDB → Node bridge: Committed send intent
+9. Node bridge → Photon 2.0: Send ETA to the enrolled household
+
+incident, household, member_role, channel_binding, conversation
+  Invariant — Incident scope, role, allowed sender/space, open question and language are
+  explicit. An optional proxy has scoped authorization.
+
+inbound_event, assessment, need
+  Invariant — Preserve provider identifiers, event time, receive time, original evidence, parsed
+  fields and reviewed state. ingest_event is bridge-only. apply_assessment can reference only
+  evidence belonging to that need.
+
+asset, driver, travel_leg, route_report
+  Invariant — Capability, current/future availability, free location and route penalty are
+  explicit. Only an authorized coordinator commits confirm_route_report. A duplicate delay
+  report cannot add 20 minutes twice.
+
+assignment, active_asset, active_driver, active_need
+  Invariant — reserve_resource revalidates availability, case version and compatibility. In one
+  reducer transaction create the job, uniquely reserve the active asset/driver/need, record the
+  decision, and enqueue the required notifications. A losing attempt has no side effects.
+
+outbox, followup, audit
+  Invariant — Each logical message has a unique key scoped to assignment version, recipient,
+  purpose and/or check-in round. Callback timers recheck current case status before acting. Each
+  override or escalation has a responsible human.
+
+Reserve the deployed battery or generator until an actual return or release event. A driver can
+become free earlier. Driver updates require the current job version and identity. Cancel or
+suppress superseded unsent notifications, and send corrected information if an old estimate
+already went out. Use private tables with sender-scoped views for coordinators and drivers. Test
+access from an unrelated identity. Transactions [12] · Views [13] · Scheduled tables [14]
+
+Photon bridge. Use the official first-reply example for the initial proof. For the integrated
+app, deploy a reachable HTTPS webhook and a worker. Verify the signature on the raw body and
+check project, event type, sender and round. Commit the receipt before acknowledging the
+webhook. Distinguish verification of a provider delivery from authorization of a household or
+driver. Deduplicate both retried deliveries and logical message IDs. Older messages remain in
+the timeline without refreshing newer estimates.
+
+Send a plain-text reply in the enrolled space with POST /v1/projects/{id}/messages, the correct
+Photon sender ID, content.type = "text", format = "plain" and a stable Idempotency-Key.
+Correlate a reply with the parent message when appropriate. The worker claims a committed outbox
+record with an expiring lease. On a crash or ambiguous result, reconcile or retry with the same
+key. Provider acceptance, delivery, human acknowledgment and completed assistance are different
+events. Send semantics [15] · Webhook verification setup [16]
+
+AI interface. Extract a proposed need, range, route, delay minutes, language and exact
+supporting words into a validated schema. Missing units, a percentage without runtime,
+conflicting reports, or uncertain identity trigger a clarifying question or human review.
+Approved fields enter reducers. The model can read the current authorized case and propose
+changes. Coordinator confirmation, priority arithmetic, inventory ownership and dispatch
+authority stay in server code. A model timeout leaves the original message visible for manual
+processing.
+
+
+TEST EVIDENCE | Run these against the shared demo commit
+
+Evidence to bring to judges
+---------------------------
+
+Run 20 paired simulation seeds. Fix the same available information, household requests,
+vehicles, compatible supplies, release times, delays and horizon for both policies. FCFS selects
+the oldest eligible pending case. Time Left chooses the eligible case with the smallest
+conservative margin and a stable tie break. Both update availability after allocating a job.
+Count requests with known operational deadlines in the denominator, including unserved ones. A
+success means compatible equipment is ready by that deadline. Report fractions for both
+policies, paired per-seed differences and their range, unknown-deadline count, and follow-ups
+still unowned. Publish the script, seed assumptions and actual results. Include ties or losses.
+
+Sources and retries
+  Pass criteria — Replay a real test event twice and deliver an older report later. One
+  effective observation remains. The clock stays anchored to the original report.
+
+Margin and availability
+  Pass criteria — Reproduce the R4 and alternate-route fixture. At +15 the case is Watch, at +14
+  it is Act now. Test a busy driver, setup time, no eligible resource, unknown and open-ended
+  bounds.
+
+State and communications race
+  Pass criteria — Two coordinators choose the last asset/driver for different households.
+  Exactly one reservation and job commit. Only the winner’s intended recipients get messages.
+  Restart the worker after provider acceptance. Each logical notification retains its key.
+
+Invalid actor or stale job
+  Pass criteria — A household’s road command cannot authorize a route change. A delayed ACCEPT
+  or ARRIVED for the wrong job/version cannot accept or close a reassigned case.
+
+Silence and privacy
+  Pass criteria — An unanswered record keeps its owner. A verified reply cancels obsolete
+  escalation. A driver cannot subscribe to another job or the full roster.
+
+Photon rubric
+  Pass criteria — Vision: show a field conversation changing which route is chosen. Craft: show
+  one concise question, an evidence timeline and a fast board update. Depth: demonstrate
+  ambiguity, refusal or stale input, and a subsequent ETA answer that remembers the same case.
+  Traction: time actual consenting testers and report successes/attempts separately from the
+  synthetic population.
+
+
+LIVE AND VIDEO ARE TWO DELIVERABLES
+Live judging: aim for 90 seconds. C introduces the household, B demonstrates the real check-in, A has a reset ready and D drives the screens. Give the judge the resident screen. Have the driver answer the judge's own question. Finish with the optional State Farm contact, the open callback and a quick switch to the second incident. Keep the two-coordinator race ready for a technical question.
+Devpost video: follow the current form's limit. Capture the real handset, coordinator decision and two-way exchange at readable size. Show the preparedness-to-contact path, then one reproducible dispatch metric if measured. Caption real, synthetic and replayed events. Verify exported audio, captions, public repo, and signed-out video playback. D submits and B independently checks.
+
+END OF CONTEXT
