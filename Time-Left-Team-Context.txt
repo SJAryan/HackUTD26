@@ -9,7 +9,7 @@ For Claude Code, use the implementation prompt under PASTE INTO EACH CLAUDE CODE
 THE TEAM IN PLAIN ENGLISH
 A | Backend and integration. You own what the system records and who can change or see it. Implement the SpacetimeDB module, authorized views, subscriptions, atomic reservations, job thread, seeds and deployment. You own shared files, bindings and integration. Hand B and D the working connection, roles and generated types; import C’s dispatch rules. First ticket TL-01. Proof: two connected sessions see the same change; only one can reserve the last battery.
 B | Photon messaging. You own the team handset and the bridge between real conversations and Spacetime. Receive the resident's report, extract supported facts, clarify ambiguous inputs, and return an ETA after dispatch. Give A a replayable event and D a real example. First ticket TL-02. Proof: one real text changes a case and the intended resident gets the committed ETA.
-C | Aryan, dispatch logic and live pitch. You own the answer to “Which compatible battery and driver can actually get there before the household’s reported backup runs out?” Implement pure rules and two incident fixtures; test delays, unknowns and silent households. Give A executable functions and D exact expected numbers. First ticket TL-03. Proof: show why a route changes and how many minutes remain on the alternate.
+C | Dispatch logic and live pitch. You own the answer to “Which compatible battery and driver can actually get there before the household’s reported backup runs out?” Implement pure rules and two incident fixtures; test delays, unknowns and silent households. Give A executable functions and D exact expected numbers. First ticket TL-03. Proof: show why a route changes and how many minutes remain on the alternate.
 D | Frontend, judging experience and submission. You own the coordinator, resident and driver screens, including both ends of their conversation. Show live updates, assistance status, preparedness signup and the voluntary contact request. Record the video, rehearse the live path, and own Devpost. First tickets TL-04 and TL-10. Proof: judge and teammate can converse from separate authorized sessions; video and public links work signed out.
 Handoff in one line: B hears the resident; C computes the options; A reserves and synchronizes the job; D makes it usable. A owns chat storage and permissions, D owns the chat UI, B owns external Photon messaging. Breadth of scope stays inside these four lanes.
 
@@ -33,7 +33,7 @@ Finish line: from a clean reset, a teammate on a real Photon test line can chang
 
 START HERE
 The screenshot shows .claude/skills and references, backend/, frontend/, .env.example, .gitignore, AGENTS.md, CLAUDE.md and SETUP.md. It does not show folder contents or a working deployment. Inspect git status and both directories before scaffolding. Preserve existing edits and check which untracked setup files belong in the base. Never commit access codes, real phone numbers, tokens or customer details.
-A alone owns shared manifests, lockfiles, schema, client bindings and merges. B owns backend/bridge/. C (Aryan) owns the domain rules inside the Spacetime module, fixtures/ and sim/. D owns frontend/ excluding generated bindings, plus docs/demo/. These are proposed paths; A posts the actual imports and directories once. Use one clone and one feature branch per teammate. Start from A's shared SHA. Reuse the existing skills, including karpathy-guidelines. Avoid four separate scaffolds.
+A alone owns shared manifests, lockfiles, schema, client bindings and merges. B owns backend/bridge/. C owns the domain rules inside the Spacetime module, fixtures/ and sim/. D owns frontend/ excluding generated bindings, plus docs/demo/. These are proposed paths; A posts the actual imports and directories once. Use one clone and one feature branch per teammate. Start from A's shared SHA. Reuse the existing skills, including karpathy-guidelines. Avoid four separate scaffolds.
 GitHub setup: create the tickets below using the TL identifier in each title. TL IDs stay stable regardless of GitHub issue numbers. Assign one human per issue. Board columns: Ready, Doing, Review, Done, Blocked. Mark fixture-backed UI visibly during integration. Close a ticket with a commit or PR and its passing acceptance proof. A coordinates root dependency changes; teammates can develop against the agreed fixture while waiting for bindings.
 
 PASTE INTO EACH CLAUDE CODE SESSION
@@ -67,7 +67,7 @@ TL-02 | Prove Photon 2.0 on one team handset
 B • P0 • Start now. Provision the beta project and follow the first-reply guide. One consenting teammate initiates the shared iMessage conversation. Capture redacted evidence of a real round trip, record channel, connection method and failures. Send A/D a sanitized event plus replay fixture. If blocked, identify exact provider error and continue TL-08 locally. Never claim a replay qualifies as a live integration.
 
 TL-03 | Build two disaster fixtures and dispatch rules
-C/Aryan • P0 • Start now. Use a fixed incident clock, H17 plus one silent household, one compatible battery and driver Ana. At 02:00 H17 reports 30–60 minutes remaining. Ready at 02:13 yields +17 minimum margin. A confirmed 20-minute detour yields −3; alternate ready at 02:24 yields +6. +15 or more = Watch; below +15 = Act now. Evaluate runtime at observation time; handle stale, unknown and no compatible resource. Add second incident with distinct household/route IDs and conditions. Done when both seeds run through the same functions and a test confirms +17/−3/+6; report equipment runtime only.
+C • P0 • Start now. Use a fixed incident clock, H17 plus one silent household, one compatible battery and driver Ana. At 02:00 H17 reports 30–60 minutes remaining. Ready at 02:13 yields +17 minimum margin. A confirmed 20-minute detour yields −3; alternate ready at 02:24 yields +6. +15 or more = Watch; below +15 = Act now. Evaluate runtime at observation time; handle stale, unknown and no compatible resource. Add second incident with distinct household/route IDs and conditions. Done when both seeds run through the same functions and a test confirms +17/−3/+6; report equipment runtime only.
 
 TL-04 | Build coordinator, resident and driver screens against the shared fixture
 D • P0 • Start now. Coordinator sees incident selector, prioritized case with evidence, compatible resource, assign action and callback queue. Resident sees assigned driver, ETA and job thread. Driver sees assigned stop, reply and arrived action. Make the three screens legible on laptop/projector and phone. Done when D can walk the three roles through the fixture; label fixture mode. Replace it with subscriptions in TL-07.
@@ -190,7 +190,7 @@ B · Photon and AI
 
 C · Rules and simulator
   Owns — spacetimedb/src/domain/, sim/, fixtures/. Pure TypeScript rules run in the module and
-  simulator. Aryan is a good fit for this role and the technical explanation.
+  simulator. C also gives the technical explanation.
   First integration proof — Prove the +17, −3 and +6 calculations. Deliver a versioned fixture
   to A and D.
 
