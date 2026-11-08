@@ -329,18 +329,22 @@ function requireRole(ctx: Ctx, roles: string[], incidentId: string) {
   return me;
 }
 
-// Tornado incident clock: 2026-11-08 02:00 America/Chicago (CST) = 08:00 UTC.
-// Values for H17, R4 and R4-ALT match C's TL-03 tornado fixture.
-const TORNADO_CLOCK = Date.UTC(2026, 10, 8, 8, 0, 0);
-// Freeze incident clock: 2026-01-20 06:00 America/Chicago (CST) = 12:00 UTC.
-const FREEZE_CLOCK = Date.UTC(2026, 0, 20, 12, 0, 0);
+// ---- Seed (TL-18) ----
+// Incident IDs are internal and match C's and B's fixtures. The demo shows `kind` and `name`:
+//   tornado-1 is the LEAD incident, displayed as the winter freeze (H17 story, H22 silent).
+//   freeze-1 is the SECOND incident, displayed as a tornado (F03/F09/F14).
+// Every seed is anchored to the time it runs (publish, or resetIncident): the incident clock and
+// every driver's and asset's freeAt are "now", so the server's ctx.timestamp ETAs and the
+// board's live margins agree. A report at the clock gives C's numbers: R4 +17, R4-ALT +6, and
+// R4 -3 after a confirmed 20-minute detour.
 
-export const init = spacetimedb.init(ctx => {
-  ctx.db.config.insert({ id: 0, owner: ctx.sender });
+const LEAD_INCIDENT = 'tornado-1';
+const SECOND_INCIDENT = 'freeze-1';
 
-  const incidentId = 'tornado-1';
-  const clock = ts(TORNADO_CLOCK);
-  ctx.db.incident.insert({ id: incidentId, kind: 'tornado', name: 'Tornado outage (synthetic)', clockAt: clock });
+function seedLeadIncident(ctx: Ctx) {
+  const incidentId = LEAD_INCIDENT;
+  const clock = ctx.timestamp;
+  ctx.db.incident.insert({ id: incidentId, kind: 'freeze', name: 'Winter freeze outage (synthetic)', clockAt: clock });
   for (const [id, label] of [
     ['H17', 'Household H17 (synthetic)'],
     ['H22', 'Household H22 (synthetic, silent)'],
@@ -356,15 +360,17 @@ export const init = spacetimedb.init(ctx => {
     ctx.db.driver.insert({ id, incidentId, name, freeAt: clock, activeJobId: undefined });
   }
   const leg = { incidentId, assetId: 'BAT-01', pickupMin: 2, setupMin: 2, confirmedDelayMin: 0 };
-  // R4 ready 02:13; R4-ALT ready 02:24 (C's fixture). R7 ready 02:19 (A's race seed for H22).
+  // Ready clock+13 (R4) and clock+24 (R4-ALT), as in C's fixture; R7 clock+19 (A's race seed for H22).
   ctx.db.route.insert({ ...leg, id: 'R4', householdId: 'H17', driverId: 'ana', driverToAssetMin: 5, assetToHomeMin: 4 });
   ctx.db.route.insert({ ...leg, id: 'R4-ALT', householdId: 'H17', driverId: 'ana', driverToAssetMin: 5, assetToHomeMin: 15 });
   ctx.db.route.insert({ ...leg, id: 'R7', householdId: 'H22', driverId: 'ben', driverToAssetMin: 6, assetToHomeMin: 9 });
+}
 
-  // Freeze incident, IDs and travel values from C's TL-03 freeze fixture (PR #20).
-  const freezeId = 'freeze-1';
-  const freezeClock = ts(FREEZE_CLOCK);
-  ctx.db.incident.insert({ id: freezeId, kind: 'freeze', name: 'Winter freeze outage (synthetic)', clockAt: freezeClock });
+function seedSecondIncident(ctx: Ctx) {
+  // IDs and travel values from C's TL-03 freeze fixture (PR #20); displayed as the tornado.
+  const freezeId = SECOND_INCIDENT;
+  const freezeClock = ctx.timestamp;
+  ctx.db.incident.insert({ id: freezeId, kind: 'tornado', name: 'Tornado outage (synthetic)', clockAt: freezeClock });
   for (const [id, need] of [['F03', 'generator'], ['F09', 'battery'], ['F14', 'battery']]) {
     ctx.db.household.insert({
       id, incidentId: freezeId, label: `Household ${id} (synthetic)`, need, version: 0,
@@ -375,7 +381,7 @@ export const init = spacetimedb.init(ctx => {
   ctx.db.asset.insert({ id: 'GEN-02', incidentId: freezeId, kind: 'generator', freeAt: freezeClock, activeJobId: undefined });
   ctx.db.asset.insert({ id: 'BAT-07', incidentId: freezeId, kind: 'battery', freeAt: freezeClock, activeJobId: undefined });
   ctx.db.driver.insert({ id: 'leo', incidentId: freezeId, name: 'Leo', freeAt: freezeClock, activeJobId: undefined });
-  // FZ-R1 ready 06:18 (F03, generator); FZ-R2 ready 06:23 (F09, battery).
+  // FZ-R1 ready clock+18 (F03, generator); FZ-R2 ready clock+23 (F09, battery).
   ctx.db.route.insert({
     id: 'FZ-R1', incidentId: freezeId, householdId: 'F03', driverId: 'leo', assetId: 'GEN-02',
     driverToAssetMin: 6, pickupMin: 3, assetToHomeMin: 7, setupMin: 2, confirmedDelayMin: 0,
@@ -384,9 +390,52 @@ export const init = spacetimedb.init(ctx => {
     id: 'FZ-R2', incidentId: freezeId, householdId: 'F09', driverId: 'leo', assetId: 'BAT-07',
     driverToAssetMin: 10, pickupMin: 2, assetToHomeMin: 8, setupMin: 3, confirmedDelayMin: 0,
   });
+}
 
+const SEEDS: Record<string, (ctx: Ctx) => void> = {
+  [LEAD_INCIDENT]: seedLeadIncident,
+  [SECOND_INCIDENT]: seedSecondIncident,
+};
+
+export const init = spacetimedb.init(ctx => {
+  ctx.db.config.insert({ id: 0, owner: ctx.sender });
+  seedLeadIncident(ctx);
+  seedSecondIncident(ctx);
   // TL-11: follow-up interval (default 5 minutes) and the repeating sweep.
   scheduleSweep(ctx, DEFAULT_FOLLOWUP_SEC);
+});
+
+// Owner only: put one incident back to its seed, re-anchored to now. Clears everything that
+// incident accumulated during a demo. Never touches member, invite or config, so claimed roles
+// (whose subject IDs the seed recreates) keep working. Other incidents are untouched.
+export const resetIncident = spacetimedb.reducer({ incidentId: t.string() }, (ctx, { incidentId }) => {
+  const cfg = ctx.db.config.id.find(0);
+  if (!cfg || !cfg.owner.isEqual(ctx.sender)) throw new SenderError('forbidden: owner only');
+  const seed = SEEDS[incidentId];
+  if (!seed) throw new SenderError(`rejected: no seed for incident ${incidentId}`);
+  const db = ctx.db;
+
+  const routeIds = new Set([...db.route.incidentId.filter(incidentId)].map(r => r.id));
+  for (const r of [...db.routeReport.iter()]) if (routeIds.has(r.routeId)) db.routeReport.reportId.delete(r.reportId);
+  for (const r of [...db.checkin.incidentId.filter(incidentId)]) db.checkin.eventId.delete(r.eventId);
+  for (const r of [...db.jobMessage.incidentId.filter(incidentId)]) db.jobMessage.id.delete(r.id);
+  for (const r of [...db.outbox.incidentId.filter(incidentId)]) db.outbox.key.delete(r.key);
+  for (const r of [...db.jobRelease.incidentId.filter(incidentId)]) db.jobRelease.jobId.delete(r.jobId);
+  for (const r of [...db.job.incidentId.filter(incidentId)]) db.job.id.delete(r.id);
+  for (const r of [...db.followupAudit.incidentId.filter(incidentId)]) db.followupAudit.id.delete(r.id);
+  for (const r of [...db.followup.incidentId.filter(incidentId)]) db.followup.id.delete(r.id);
+  for (const r of [...db.checkinRound.incidentId.filter(incidentId)]) db.checkinRound.id.delete(r.id);
+  for (const r of [...db.profile.incidentId.filter(incidentId)]) db.profile.householdId.delete(r.householdId);
+  for (const r of [...db.agentContact.incidentId.filter(incidentId)]) db.agentContact.id.delete(r.id);
+  for (const r of [...db.agentDecline.incidentId.filter(incidentId)]) db.agentDecline.householdId.delete(r.householdId);
+  // Seeded entities: removed and recreated from the seed, so activeJobIds, versions, runtimes,
+  // confirmed delays and freeAt all return to seed values anchored to now.
+  for (const r of routeIds) db.route.id.delete(r);
+  for (const r of [...db.household.incidentId.filter(incidentId)]) db.household.id.delete(r.id);
+  for (const r of [...db.asset.incidentId.filter(incidentId)]) db.asset.id.delete(r.id);
+  for (const r of [...db.driver.incidentId.filter(incidentId)]) db.driver.id.delete(r.id);
+  db.incident.id.delete(incidentId);
+  seed(ctx);
 });
 
 // ---- Roles ----

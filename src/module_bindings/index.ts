@@ -45,6 +45,7 @@ import PostJobMessageReducer from "./post_job_message_reducer";
 import ReleaseJobReducer from "./release_job_reducer";
 import RequestAgentContactReducer from "./request_agent_contact_reducer";
 import ReserveReducer from "./reserve_reducer";
+import ResetIncidentReducer from "./reset_incident_reducer";
 import SetFollowupIntervalReducer from "./set_followup_interval_reducer";
 import SkipAgentContactReducer from "./skip_agent_contact_reducer";
 import UpdateJobReducer from "./update_job_reducer";
@@ -240,6 +241,7 @@ const reducersSchema = __reducers(
   __reducerSchema("release_job", ReleaseJobReducer),
   __reducerSchema("request_agent_contact", RequestAgentContactReducer),
   __reducerSchema("reserve", ReserveReducer),
+  __reducerSchema("reset_incident", ResetIncidentReducer),
   __reducerSchema("set_followup_interval", SetFollowupIntervalReducer),
   __reducerSchema("skip_agent_contact", SkipAgentContactReducer),
   __reducerSchema("update_job", UpdateJobReducer),

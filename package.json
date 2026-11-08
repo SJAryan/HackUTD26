@@ -14,7 +14,10 @@
     "check:tl05": "tsx scripts/race-check.ts",
     "check:tl06": "tsx scripts/chat-check.ts",
     "check:tl09": "tsx scripts/consent-check.ts",
-    "check:tl11": "tsx scripts/followup-check.ts"
+    "check:tl11": "tsx scripts/followup-check.ts",
+    "check:tl18": "tsx scripts/reset-check.ts",
+    "demo:reset": "tsx scripts/demo-reset.ts",
+    "demo:invites": "tsx scripts/demo-invites.ts"
   },
   "dependencies": {
     "react": "^18.3.1",
