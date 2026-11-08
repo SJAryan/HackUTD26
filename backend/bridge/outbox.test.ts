@@ -268,3 +268,19 @@ test("no legacy record: a genuinely new row sends once, then not again", async (
   await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
   assert.deepEqual(w.sends.map((s) => s.key), [sendKey(row)]);
 });
+
+test("reset: a legacy failed record made obsolete by an empty view keeps its send time, so the new row sends once", async () => {
+  const w = world();
+  const original = "2026-11-08T07:00:00.000Z"; // an hour before the poll
+  w.sent[eta(1).key] = { status: "failed", at: original, attempts: 1 };
+  await processOutbox([], "H17", space, w.sent, w.deps, w.noted); // reset: the view is empty
+  assert.equal(w.sent[eta(1).key].status, "obsolete");
+  assert.equal(w.sent[eta(1).key].at, original);
+  assert.equal(w.sent[eta(1).key].obsoletedAt, "2026-11-08T08:00:00.000Z");
+  w.tick(5 * SECOND);
+  const row = eta(1, 1, "H17", CREATED + 5_000_000n); // new database: same outbox key, created 5s after that poll
+  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
+  assert.deepEqual(w.sends.map((s) => s.key), [sendKey(row)]);
+  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
+  assert.equal(w.sends.length, 1);
+});

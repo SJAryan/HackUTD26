@@ -19,7 +19,7 @@ export type OutboxRow = {
 };
 export type SendResult = "accepted" | "failed" | "ambiguous";
 // "failed" only appears in state files written by earlier builds that auto-retried.
-export type SentRecord = { status: "accepted" | "ambiguous" | "needs_reconciliation" | "obsolete" | "failed"; at: string; attempts: number };
+export type SentRecord = { status: "accepted" | "ambiguous" | "needs_reconciliation" | "obsolete" | "failed"; at: string; attempts: number; obsoletedAt?: string };
 export type SentLog = Record<string, SentRecord>;
 // The enrolled sender's Photon direct space, learned from their own inbound message.
 export type Space = { spaceId: string; senderId: string };
@@ -81,7 +81,8 @@ export async function processOutbox(
   const present = new Set(snapshot.map(sendKey));
   for (const [key, prev] of Object.entries(sent)) {
     if (prev.status === "failed" && !present.has(key)) {
-      sent[key] = { ...prev, status: "obsolete", at };
+      // Keep prev.at: a bare-key record's original send time is what the legacy migration compares.
+      sent[key] = { ...prev, status: "obsolete", obsoletedAt: at };
       changed = true;
       deps.log(`OUTBOX ${outboxKeyOf(key)} obsolete: no longer in the view; not sending`);
     }
