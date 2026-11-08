@@ -7,7 +7,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { ApiError, Photon } from "@photon-ai/api";
 import { configuration } from "./agent.ts";
 import { handle, householdFor, inboundText, type Deps, type PhotonItem } from "./inbound.ts";
-import { classifySendError, processOutbox, type OutboxDeps, type SentLog, type Space } from "./outbox.ts";
+import { classifySendError, outboxKeyOf, processOutbox, type OutboxDeps, type SentLog, type Space } from "./outbox.ts";
 import { describeReceipt } from "./receipt.ts";
 import { DB, HOST, checkinReceipt, connect, finish, ingestVia, requireBridgeRole } from "./stdb.ts";
 
@@ -76,7 +76,7 @@ try {
         });
         return "accepted";
       } catch (error) {
-        console.log(`OUTBOX ${key} send error: ${describeError(error)}`);
+        console.log(`OUTBOX ${outboxKeyOf(key)} send error: ${describeError(error)}`);
         return classifySendError(error);
       }
     },
