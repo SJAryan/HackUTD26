@@ -1,4 +1,4 @@
-# Time Left: setup and shared contract (TL-01, TL-05, TL-06, TL-09)
+# Time Left: setup and shared contract (TL-01, TL-05, TL-06, TL-09, TL-11)
 
 Owner: A (backend and integration). Scaffolded with `spacetime init --template react-ts`.
 All data in the seed is synthetic.
@@ -55,6 +55,7 @@ npm run stdb:reset:local && npm run check:tl01
 npm run stdb:reset:local && npm run check:tl05
 npm run stdb:reset:local && npm run check:tl06
 npm run stdb:reset:local && npm run check:tl09
+npm run stdb:reset:local && npm run check:tl11
 ```
 
 - **TL-01:** a bridge session records H17's 02:00 check-in; a coordinator session sees H17 change
@@ -80,6 +81,14 @@ npm run stdb:reset:local && npm run check:tl09
   `conflict: the resident skipped. Nothing was saved.` H17 skipping after opting in is a
   conflict. The coordinator sees 2 registrations and 1 opt-in, never the lead; drivers and
   sessions without a role see no profiles. Ends with `PASS: TL-09 enrollment and agent contact`.
+- **TL-11** (about 12 s; sets a 2 s interval and restores 300 s): coordinator 1 opens rounds for
+  H17 and H22. H17 replies and its round closes with no follow-up. H22 stays silent: it gets a
+  follow-up owned by coordinator 1 with its earlier evidence kept, then escalates with the same
+  owner. A stale claim conflicts and an outsider is refused; coordinator 2 claims it. H22's
+  reply cancels it and nothing escalates afterwards. The audit reads created, escalated,
+  claimed, cancelled, and calling the sweep directly is refused. After delivery, `releaseJob`
+  frees BAT-01 and Ana, and BAT-01 is reserved for H22. Ends with
+  `PASS: TL-11 follow-ups and release`.
 
 To point a check at another server, set `SPACETIMEDB_HOST`, `SPACETIMEDB_DB_NAME` and
 `SPACETIMEDB_SERVER` (the CLI nickname, e.g. `maincloud`).
@@ -102,7 +111,7 @@ await conn.reducers.claimInvite({ code }); // binds this session's identity to t
 
 | Role | `subjectId` | Can call | Can read (views) |
 |---|---|---|---|
-| `coordinator` | `''` | `ingestCheckin`, `confirmRouteReport`, `reserve` | `coordinator_*` and `job_messages` for its incident |
+| `coordinator` | `''` | `ingestCheckin`, `confirmRouteReport`, `reserve`, `openCheckinRound`, `claimFollowup`, `releaseJob` | `coordinator_*` and `job_messages` for its incident |
 | `driver` | driver ID | `postJobMessage`, `updateJob` (`arrived`) on its jobs | `driver_jobs`, `job_messages`: its own jobs only |
 | `bridge` | `''` | `ingestCheckin` | `bridge_outbox` and `bridge_checkins` (receipts) for its incident |
 | `resident` | household ID | `postJobMessage`, `updateJob` (`delivered`) on its jobs; `enrollPreparedness`, `requestAgentContact`, `skipAgentContact` | `resident_jobs`, `job_messages`, `my_profile`, `my_agent_request`, `my_agent_decline`: its own household only |
@@ -149,7 +158,8 @@ All tables are private. Clients subscribe to views: `tables.myRole`, `tables.myI
 `tables.coordinatorDrivers`, `tables.coordinatorRoutes`, `tables.coordinatorJobs`,
 `tables.driverJobs`, `tables.residentJobs`, `tables.jobMessages`, `tables.bridgeOutbox`,
 `tables.bridgeCheckins`, `tables.myProfile`, `tables.myAgentRequest`, `tables.myAgentDecline`,
-`tables.coordinatorProfiles` and `tables.coordinatorRegistryStats`.
+`tables.coordinatorProfiles`, `tables.coordinatorRegistryStats`, `tables.coordinatorRounds`,
+`tables.coordinatorFollowups` and `tables.coordinatorFollowupAudit`.
 A view change can arrive as a delete plus an
 insert, so read the current rows rather than relying on `onUpdate`.
 
@@ -248,8 +258,8 @@ conn.reducers.updateJob({ jobId, expectedVersion: job.version, status: 'arrived'
 | `delivered` | resident | `arrived` | job `version` + 1; thread event `[delivered] H17 confirmed delivery` |
 
 A stale `expectedVersion` or wrong current status is a `conflict:`, so a delayed or duplicate
-ARRIVED cannot change the job again. The wrong role is `forbidden:`. Delivery does not yet free
-the driver or battery.
+ARRIVED cannot change the job again. The wrong role is `forbidden:`. Delivery on its own does
+not free the driver or battery; a coordinator calls `releaseJob` (below).
 
 **`enrollPreparedness`** (TL-09, D -> A; the household's resident, before the incident):
 
@@ -302,9 +312,52 @@ conn.reducers.skipAgentContact({});
 - **Equal access:** `reserve`, `ingestCheckin` and the coordinator household rows never read
   profiles or leads, so opting in or skipping cannot change who gets help or how fast.
 
-Not built yet: releasing an asset or driver, callback ownership and scheduled follow-up
-(TL-11), notifying the resident by Photon on arrival (TL-08), and a public signup without a
-resident invite.
+**Check-in rounds and silent follow-ups** (TL-11):
+
+```ts
+// Coordinator starts outreach for a household; they become the default callback owner.
+conn.reducers.openCheckinRound({ roundKey: crypto.randomUUID(), incidentId: 'tornado-1', householdId: 'H22' });
+// Coordinator takes over a callback; expectedVersion is followup.version from the view.
+conn.reducers.claimFollowup({ followupId, expectedVersion: f.version });
+```
+
+- **Round:** `checkin_round` row with `status` `open` and `dueAt` = now + the follow-up interval.
+  A repeated `roundKey` is a no-op; a second open or silent round for the household is a
+  `conflict:`.
+- **Verified reply:** any new `ingestCheckin` for the household (bridge or coordinator) closes
+  its open or silent round as `answered` right away and cancels its follow-up. The sweep repeats
+  this check as a backstop.
+- **Silent:** a scheduled sweep (about five times per interval) rechecks each open round. If it
+  is due with no reply received since it opened, the round becomes `silent` and a `followup` is
+  created with `owner` (the round's opener), `dueAt` (now + interval) and the household's last
+  evidence (`lastEventId`, `lastObservedAt`, runtime; unknown stays unknown).
+- **Escalation:** a follow-up still open or claimed past its `dueAt` gets `escalationLevel` + 1
+  and a new `dueAt`. Its owner never changes on its own, so a silent household always has one.
+- **Claim:** `claimFollowup` sets the owner to the caller and `status` `claimed`. A stale
+  `expectedVersion` or a cancelled follow-up is a `conflict:`; claiming your own again is a no-op.
+- **Audit:** every create, escalate, claim and cancel writes a `followup_audit` row (`actor` is
+  empty for the sweep).
+- **Reading:** coordinators subscribe to `tables.coordinatorRounds`,
+  `tables.coordinatorFollowups` and `tables.coordinatorFollowupAudit`. Household rows are
+  unchanged; show the Silent lane from the household's round.
+- **Interval:** 300 s (5 minutes) by default. The owner changes it for a demo with
+  `spacetime call --server local time-left set_followup_interval 60`. New rounds and callbacks
+  use the new value. The sweep runs only on its schedule; calling it directly is `forbidden:`.
+
+**`releaseJob`** (TL-05 deferred; coordinator):
+
+```ts
+conn.reducers.releaseJob({ jobId, expectedVersion: job.version });
+```
+
+- **Success:** after delivery, the job's battery and driver get `activeJobId` cleared and
+  `freeAt` = now, so they can be reserved again. The job keeps `status` `delivered`, so the
+  agent-contact offer still applies. The household keeps its `activeJobId`.
+- **Duplicate:** releasing again is a no-op. **Conflict:** the job is not delivered yet, or a
+  stale `expectedVersion`.
+
+Not built yet: notifying the resident by Photon on arrival (TL-08), opening rounds from the
+bridge, the TL-11 dispatch benchmark (C), and a public signup without a resident invite.
 
 **Dispatch rules:** `spacetimedb/src/rules.ts` copies `readyAt` from C's unmerged TL-03 branch as
 a fixture. Once TL-03 is on main, its body becomes a re-export of

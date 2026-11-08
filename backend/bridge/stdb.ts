@@ -1,9 +1,10 @@
 // SpacetimeDB side of the bridge. Uses A's generated bindings; never edit them here.
-// TL-05 made every table private: the bridge reads only the my_role and bridge_outbox views.
+// TL-05 made every table private: the bridge reads only the my_role, bridge_outbox and bridge_checkins views.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { Timestamp } from "spacetimedb";
 import { DbConnection, tables } from "../../src/module_bindings/index.ts";
 import type { CheckinArgs } from "./inbound.ts";
+import { waitForReceipt, type Receipt } from "./receipt.ts";
 import { ensureBridgeRole, type Role } from "./role.ts";
 
 export const HOST = process.env.SPACETIMEDB_HOST ?? "ws://localhost:3000";
@@ -30,7 +31,7 @@ export function connect(): Promise<DbConnection> {
         conn.subscriptionBuilder()
           .onApplied(() => { clearTimeout(timer); resolve(conn); })
           .onError((ctx) => { clearTimeout(timer); reject(ctx.event ?? new Error("SpacetimeDB subscription failed")); })
-          .subscribe([tables.myRole, tables.bridgeOutbox]);
+          .subscribe([tables.myRole, tables.bridgeOutbox, tables.bridgeCheckins]);
       })
       .onConnectError((_ctx, err) => {
         clearTimeout(timer);
@@ -68,6 +69,11 @@ export function ingestVia(conn: DbConnection) {
       runtimeUpperMin: a.runtimeUpperMin,
     });
   };
+}
+
+// The recorded row's household and runtime from the bridge_checkins view, or undefined if it never shows up.
+export function checkinReceipt(conn: DbConnection, eventId: string): Promise<Receipt | undefined> {
+  return waitForReceipt(() => conn.db.bridgeCheckins.iter(), eventId);
 }
 
 // Close the socket before exiting; exiting with an open socket aborts Node on Windows (see docs/setup.md).

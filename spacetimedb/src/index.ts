@@ -1,5 +1,5 @@
 import { schema, table, t, SenderError, type InferSchema, type ReducerCtx } from 'spacetimedb/server';
-import { Timestamp } from 'spacetimedb';
+import { ScheduleAt, Timestamp } from 'spacetimedb';
 import { readyAt } from './rules';
 
 // TL-05: private state, role-scoped views and atomic dispatch. All seed data is synthetic.
@@ -224,9 +224,93 @@ const agentDecline = table(
   }
 );
 
+// ---- TL-11: check-in rounds, silent follow-ups and callback ownership ----
+
+// One outreach round per household at a time. Silent when due without a verified reply.
+const checkinRound = table(
+  { name: 'checkin_round' },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    roundKey: t.string().unique(), // stable request ID; a retry is a no-op
+    incidentId: t.string().index('btree'),
+    householdId: t.string().index('btree'),
+    status: t.string().index('btree'), // 'open' -> 'answered' | 'silent' -> 'answered'
+    openedBy: t.identity(), // the coordinator who started outreach; default callback owner
+    openedAt: t.timestamp(),
+    dueAt: t.timestamp(),
+    answeredEventId: t.option(t.string()),
+    closedAt: t.option(t.timestamp()),
+  }
+);
+
+// A callback task for a silent household. It always has a responsible owner.
+const followup = table(
+  { name: 'followup' },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    roundId: t.u64().unique(),
+    incidentId: t.string().index('btree'),
+    householdId: t.string(),
+    status: t.string().index('btree'), // 'open' | 'claimed' | 'cancelled'
+    owner: t.identity(),
+    dueAt: t.timestamp(),
+    escalationLevel: t.u32(), // bumped each time the callback passes its due time unanswered
+    version: t.u32(), // claimFollowup checks it
+    // Last evidence at the time the household went silent; unknown stays unknown.
+    lastEventId: t.option(t.string()),
+    lastObservedAt: t.option(t.timestamp()),
+    runtimeLowerMin: t.option(t.u32()),
+    runtimeUpperMin: t.option(t.u32()),
+    createdAt: t.timestamp(),
+  }
+);
+
+const followupAudit = table(
+  { name: 'followup_audit' },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    followupId: t.u64().index('btree'),
+    incidentId: t.string().index('btree'),
+    action: t.string(), // 'created' | 'escalated' | 'claimed' | 'cancelled'
+    actor: t.option(t.identity()), // none for the scheduled sweep
+    owner: t.identity(), // owner after the action
+    note: t.string(),
+    at: t.timestamp(),
+  }
+);
+
+// Demo-configurable follow-up interval (seconds). Rounds and callbacks fall due after it.
+const followupConfig = table(
+  { name: 'followup_config' },
+  {
+    id: t.u32().primaryKey(), // always 0
+    intervalSec: t.u32(),
+  }
+);
+
+const followupTimer = table(
+  { name: 'followup_timer' },
+  {
+    scheduledId: t.u64().primaryKey().autoInc(),
+    scheduledAt: t.scheduleAt(),
+  }
+);
+
+// TL-05 deferred: a delivered job's battery and driver are released for new work.
+const jobRelease = table(
+  { name: 'job_release' },
+  {
+    jobId: t.u64().primaryKey(),
+    incidentId: t.string().index('btree'),
+    releasedBy: t.identity(),
+    releasedAt: t.timestamp(),
+  }
+);
+
 const spacetimedb = schema({
   config, invite, member, incident, household, asset, driver,
   route, routeReport, checkin, job, outbox, jobMessage, profile, agentContact, agentDecline,
+  checkinRound, followup, followupAudit, followupConfig, followupTimer, jobRelease,
 });
 export default spacetimedb;
 
@@ -300,6 +384,9 @@ export const init = spacetimedb.init(ctx => {
     id: 'FZ-R2', incidentId: freezeId, householdId: 'F09', driverId: 'leo', assetId: 'BAT-07',
     driverToAssetMin: 10, pickupMin: 2, assetToHomeMin: 8, setupMin: 3, confirmedDelayMin: 0,
   });
+
+  // TL-11: follow-up interval (default 5 minutes) and the repeating sweep.
+  scheduleSweep(ctx, DEFAULT_FOLLOWUP_SEC);
 });
 
 // ---- Roles ----
@@ -392,6 +479,9 @@ export const ingestCheckin = spacetimedb.reducer(
         lastEventId: args.eventId,
       });
     }
+
+    // TL-11: a verified reply closes the household's round and cancels obsolete escalation.
+    answerRounds(ctx, args.householdId, args.eventId);
   }
 );
 
@@ -641,6 +731,174 @@ export const skipAgentContact = spacetimedb.reducer(ctx => {
   });
 });
 
+// ---- TL-11: rounds, silent follow-ups, callback ownership; TL-05 release ----
+
+const DEFAULT_FOLLOWUP_SEC = 300; // 5 minutes
+const MICROS_PER_SEC = 1_000_000n;
+const plusSec = (at: Timestamp, seconds: number) =>
+  new Timestamp(at.microsSinceUnixEpoch + BigInt(seconds) * MICROS_PER_SEC);
+const followupSec = (ctx: Ctx) => ctx.db.followupConfig.id.find(0)?.intervalSec ?? DEFAULT_FOLLOWUP_SEC;
+
+type RoundRow = NonNullable<ReturnType<Ctx['db']['checkinRound']['id']['find']>>;
+type FollowupRow = NonNullable<ReturnType<Ctx['db']['followup']['id']['find']>>;
+
+// Stores the interval and (re)starts one repeating sweep. The sweep runs about five times per
+// interval (every 1-60 s), so a round goes silent shortly after it falls due.
+function scheduleSweep(ctx: Ctx, seconds: number) {
+  const cfg = ctx.db.followupConfig.id.find(0);
+  if (cfg) ctx.db.followupConfig.id.update({ ...cfg, intervalSec: seconds });
+  else ctx.db.followupConfig.insert({ id: 0, intervalSec: seconds });
+  for (const timer of [...ctx.db.followupTimer.iter()]) ctx.db.followupTimer.scheduledId.delete(timer.scheduledId);
+  const every = Math.min(60, Math.max(1, Math.floor(seconds / 5)));
+  ctx.db.followupTimer.insert({ scheduledId: 0n, scheduledAt: ScheduleAt.interval(BigInt(every) * MICROS_PER_SEC) });
+}
+
+function audit(ctx: Ctx, f: FollowupRow, action: string, note: string, actor?: typeof ctx.sender) {
+  ctx.db.followupAudit.insert({
+    id: 0n, followupId: f.id, incidentId: f.incidentId, action, actor, owner: f.owner, note, at: ctx.timestamp,
+  });
+}
+
+// Closes a round on a verified reply and cancels its follow-up, if one is still active.
+function closeRound(ctx: Ctx, r: RoundRow, eventId: string, actor?: typeof ctx.sender) {
+  ctx.db.checkinRound.id.update({ ...r, status: 'answered', answeredEventId: eventId, closedAt: ctx.timestamp });
+  const f = ctx.db.followup.roundId.find(r.id);
+  if (f && (f.status === 'open' || f.status === 'claimed')) {
+    const next = ctx.db.followup.id.update({ ...f, status: 'cancelled', version: f.version + 1 });
+    audit(ctx, next, 'cancelled', `verified reply ${eventId}`, actor);
+  }
+}
+
+// Called by ingestCheckin after it records a new check-in (sent by the bridge or a coordinator).
+function answerRounds(ctx: Ctx, householdId: string, eventId: string) {
+  for (const r of [...ctx.db.checkinRound.householdId.filter(householdId)]) {
+    if (r.status === 'open' || r.status === 'silent') closeRound(ctx, r, eventId, ctx.sender);
+  }
+}
+
+// Coordinator starts outreach for one household. The opener is the default callback owner.
+export const openCheckinRound = spacetimedb.reducer(
+  { roundKey: t.string(), incidentId: t.string(), householdId: t.string() },
+  (ctx, args) => {
+    requireRole(ctx, ['coordinator'], args.incidentId);
+    const same = ctx.db.checkinRound.roundKey.find(args.roundKey);
+    if (same) {
+      if (same.householdId === args.householdId) return; // retry: no new round
+      throw new SenderError('conflict: roundKey already used');
+    }
+    const home = ctx.db.household.id.find(args.householdId);
+    if (!home || home.incidentId !== args.incidentId) {
+      throw new SenderError(`unknown household ${args.householdId} in ${args.incidentId}`);
+    }
+    const active = [...ctx.db.checkinRound.householdId.filter(home.id)]
+      .find(r => r.status === 'open' || r.status === 'silent');
+    if (active) throw new SenderError(`conflict: ${home.id} already has round ${active.id} (${active.status})`);
+    ctx.db.checkinRound.insert({
+      id: 0n, roundKey: args.roundKey, incidentId: home.incidentId, householdId: home.id, status: 'open',
+      openedBy: ctx.sender, openedAt: ctx.timestamp, dueAt: plusSec(ctx.timestamp, followupSec(ctx)),
+      answeredEventId: undefined, closedAt: undefined,
+    });
+  }
+);
+
+// Runs on the schedule only. Every action rechecks the row's current state first.
+export const sweepFollowups = spacetimedb.reducer(
+  { onSchedule: followupTimer },
+  { timer: followupTimer.rowType },
+  ctx => {
+    if (!ctx.senderAuth.isInternal) throw new SenderError('forbidden: runs on schedule only');
+    const now = ctx.timestamp.microsSinceUnixEpoch;
+    const interval = followupSec(ctx);
+
+    for (const r of [...ctx.db.checkinRound.status.filter('open')]) {
+      // A verified reply received since the round opened answers it.
+      const reply = [...ctx.db.checkin.incidentId.filter(r.incidentId)].find(
+        c => c.householdId === r.householdId && c.receivedAt.microsSinceUnixEpoch >= r.openedAt.microsSinceUnixEpoch
+      );
+      if (reply) {
+        closeRound(ctx, r, reply.eventId);
+        continue;
+      }
+      if (now < r.dueAt.microsSinceUnixEpoch) continue;
+      ctx.db.checkinRound.id.update({ ...r, status: 'silent' });
+      if (ctx.db.followup.roundId.find(r.id)) continue;
+      const home = ctx.db.household.id.find(r.householdId);
+      const f = ctx.db.followup.insert({
+        id: 0n, roundId: r.id, incidentId: r.incidentId, householdId: r.householdId, status: 'open',
+        owner: r.openedBy, dueAt: plusSec(ctx.timestamp, interval), escalationLevel: 0, version: 1,
+        lastEventId: home?.lastEventId, lastObservedAt: home?.lastObservedAt,
+        runtimeLowerMin: home?.runtimeLowerMin, runtimeUpperMin: home?.runtimeUpperMin,
+        createdAt: ctx.timestamp,
+      });
+      audit(ctx, f, 'created', `round ${r.id} overdue without a verified reply`);
+    }
+
+    for (const status of ['open', 'claimed']) {
+      for (const f of [...ctx.db.followup.status.filter(status)]) {
+        if (now < f.dueAt.microsSinceUnixEpoch) continue;
+        const r = ctx.db.checkinRound.id.find(f.roundId);
+        if (r?.status === 'answered') {
+          const next = ctx.db.followup.id.update({ ...f, status: 'cancelled', version: f.version + 1 });
+          audit(ctx, next, 'cancelled', `round ${r.id} already answered`);
+          continue;
+        }
+        // Still unanswered: keep the owner, push the callback out one interval and record it.
+        const next = ctx.db.followup.id.update({
+          ...f, escalationLevel: f.escalationLevel + 1, dueAt: plusSec(ctx.timestamp, interval),
+        });
+        audit(ctx, next, 'escalated', `callback overdue; level ${next.escalationLevel}`);
+      }
+    }
+  }
+);
+
+// A coordinator takes ownership of a callback. Audited; expectedVersion guards a stale screen.
+export const claimFollowup = spacetimedb.reducer(
+  { followupId: t.u64(), expectedVersion: t.u32() },
+  (ctx, args) => {
+    const f = ctx.db.followup.id.find(args.followupId);
+    if (!f) throw new SenderError(`unknown followup ${args.followupId}`);
+    requireRole(ctx, ['coordinator'], f.incidentId);
+    if (f.status === 'claimed' && f.owner.isEqual(ctx.sender)) return; // retry: already yours
+    if (f.status === 'cancelled') throw new SenderError(`conflict: followup ${f.id} was cancelled by a verified reply`);
+    if (f.version !== args.expectedVersion) {
+      throw new SenderError(`conflict: followup ${f.id} is at version ${f.version}, expected ${args.expectedVersion}`);
+    }
+    const previous = f.owner.toHexString().slice(0, 12);
+    const next = ctx.db.followup.id.update({ ...f, status: 'claimed', owner: ctx.sender, version: f.version + 1 });
+    audit(ctx, next, 'claimed', `owner was ${previous}`, ctx.sender);
+  }
+);
+
+// Owner only: demo knob. New rounds and callbacks use the new interval; existing due times stay.
+export const setFollowupInterval = spacetimedb.reducer({ seconds: t.u32() }, (ctx, { seconds }) => {
+  const cfg = ctx.db.config.id.find(0);
+  if (!cfg || !cfg.owner.isEqual(ctx.sender)) throw new SenderError('forbidden: owner only');
+  if (seconds < 1 || seconds > 3600) throw new SenderError('seconds must be 1-3600');
+  scheduleSweep(ctx, seconds);
+});
+
+// TL-05 deferred: after delivery, free the battery and driver for new work. The job keeps its
+// 'delivered' status, so the agent-contact offer still applies.
+export const releaseJob = spacetimedb.reducer(
+  { jobId: t.u64(), expectedVersion: t.u32() },
+  (ctx, args) => {
+    const j = ctx.db.job.id.find(args.jobId);
+    if (!j) throw new SenderError(`unknown job ${args.jobId}`);
+    requireRole(ctx, ['coordinator'], j.incidentId);
+    if (ctx.db.jobRelease.jobId.find(j.id)) return; // retry: already released
+    if (j.version !== args.expectedVersion) {
+      throw new SenderError(`conflict: job ${j.id} is at version ${j.version}, expected ${args.expectedVersion}`);
+    }
+    if (j.status !== 'delivered') throw new SenderError(`conflict: job ${j.id} is ${j.status}, not delivered`);
+    const a = ctx.db.asset.id.find(j.assetId);
+    if (a && a.activeJobId === j.id) ctx.db.asset.id.update({ ...a, activeJobId: undefined, freeAt: ctx.timestamp });
+    const d = ctx.db.driver.id.find(j.driverId);
+    if (d && d.activeJobId === j.id) ctx.db.driver.id.update({ ...d, activeJobId: undefined, freeAt: ctx.timestamp });
+    ctx.db.jobRelease.insert({ jobId: j.id, incidentId: j.incidentId, releasedBy: ctx.sender, releasedAt: ctx.timestamp });
+  }
+);
+
 // ---- Views: each client sees only what its role allows ----
 
 export const myRole = spacetimedb.view(
@@ -831,5 +1089,34 @@ export const bridgeOutbox = spacetimedb.view(
       const job = ctx.db.job.id.find(row.jobId);
       return job?.status === 'assigned' && job.version === row.jobVersion;
     });
+  }
+);
+
+// TL-11: coordinators see their incident's rounds, follow-ups (with owner and due time) and
+// the audit trail of every create, escalate, claim and cancel.
+export const coordinatorRounds = spacetimedb.view(
+  { name: 'coordinator_rounds', public: true },
+  t.array(checkinRound.rowType),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    return me?.role === 'coordinator' ? [...ctx.db.checkinRound.incidentId.filter(me.incidentId)] : [];
+  }
+);
+
+export const coordinatorFollowups = spacetimedb.view(
+  { name: 'coordinator_followups', public: true },
+  t.array(followup.rowType),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    return me?.role === 'coordinator' ? [...ctx.db.followup.incidentId.filter(me.incidentId)] : [];
+  }
+);
+
+export const coordinatorFollowupAudit = spacetimedb.view(
+  { name: 'coordinator_followup_audit', public: true },
+  t.array(followupAudit.rowType),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    return me?.role === 'coordinator' ? [...ctx.db.followupAudit.incidentId.filter(me.incidentId)] : [];
   }
 );
