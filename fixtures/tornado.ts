@@ -1,5 +1,6 @@
-// TL-03 tornado fixture. All data is synthetic. IDs match A's TL-01 seed.
-// Clock: 2026-11-08 02:00 America/Chicago = 08:00 UTC.
+// TL-03 fixture for incident tornado-1, displayed as the lead "Winter freeze outage" (TL-18).
+// All data is synthetic. IDs match A's seed, which anchors clocks to the reset time.
+// Fixed clock for replay: 2026-11-08 02:00 America/Chicago = 08:00 UTC.
 import { MIN, type DispatchOption, type HouseholdCase } from '../spacetimedb/src/domain/dispatch';
 
 export const incidentId = 'tornado-1';

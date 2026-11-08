@@ -1,5 +1,6 @@
-// TL-03 freeze fixture. All data is synthetic. Household, route and resource IDs are distinct
-// from the tornado incident. Clock: 2026-01-20 06:00 America/Chicago = 12:00 UTC.
+// TL-03 fixture for incident freeze-1, displayed as the second incident "Tornado outage" (TL-18).
+// All data is synthetic. Household, route and resource IDs are distinct
+// from tornado-1. Clock: 2026-01-20 06:00 America/Chicago = 12:00 UTC.
 import { MIN, type DispatchOption, type HouseholdCase } from '../spacetimedb/src/domain/dispatch';
 
 export const incidentId = 'freeze-1';
