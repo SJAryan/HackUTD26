@@ -30,14 +30,23 @@ function normalize(sentence: string): string {
 
 type Mention = { lowerMin: number; upperMin?: number };
 
-// Order matters: each pass blanks what it matched so a range is not also read as two singles.
+const elapsed = () => null; // time already passed, never runtime
+
+// Order matters: each pass blanks what it matched so a range is not also read as two singles,
+// and upper bounds ("no more than N") are read before lower bounds ("more than N").
 const PATTERNS: [RegExp, (m: RegExpExecArray) => Mention | null][] = [
-  [new RegExp(String.raw`${NUM}\s*${UNIT}\s*ago\b`, "g"), () => null], // elapsed time, not runtime
+  [new RegExp(String.raw`${NUM}\s*${UNIT}\s*ago\b`, "g"), elapsed],
+  [new RegExp(String.raw`\bsince\s+${NUM}\s*${UNIT}`, "g"), elapsed],
+  [new RegExp(String.raw`${NUM}\s*${UNIT}\s+now\b`, "g"), elapsed],
+  [new RegExp(String.raw`\bfor\s+the\s+(?:past|last)\s+${NUM}\s*${UNIT}`, "g"), elapsed],
+  [new RegExp(String.raw`\b(?:been|out|down|without)\s+(?:\S+\s+){0,3}?for\s+${NUM}\s*${UNIT}`, "g"), elapsed],
+  [new RegExp(String.raw`(?:no more than|not more than|at most|up to|max(?:imum)?(?:\s+of)?|under|less than|below|no longer than)\s+(?:about\s+|around\s+)?${NUM}\s*${UNIT}`, "g"),
+    (m) => ({ lowerMin: 0, upperMin: toMinutes(m[1], m[2]) })],
+  [new RegExp(String.raw`${NUM}\s*${UNIT}\s+(?:at most|max(?:imum)?)\b`, "g"),
+    (m) => ({ lowerMin: 0, upperMin: toMinutes(m[1], m[2]) })],
   [new RegExp(String.raw`${NUM}\s*(?:${UNIT})?\s*(?:-|to)\s*${NUM}\s*${UNIT}`, "g"),
     (m) => ({ lowerMin: toMinutes(m[1], m[2] ?? m[4]), upperMin: toMinutes(m[3], m[4]) })],
-  [new RegExp(String.raw`(?:under|less than|below)\s+${NUM}\s*${UNIT}`, "g"),
-    (m) => ({ lowerMin: 0, upperMin: toMinutes(m[1], m[2]) })],
-  [new RegExp(String.raw`(?:over|more than|at least)\s+${NUM}\s*${UNIT}`, "g"),
+  [new RegExp(String.raw`(?<!\bno\s|\bnot\s)(?:over|more than|at least)\s+${NUM}\s*${UNIT}`, "g"),
     (m) => ({ lowerMin: toMinutes(m[1], m[2]) })],
   [new RegExp(String.raw`${NUM}\s*\+\s*${UNIT}|${NUM}\s*${UNIT}\s*(?:\+|or more)`, "g"),
     (m) => ({ lowerMin: m[1] ? toMinutes(m[1], m[2]) : toMinutes(m[3], m[4]) })],
@@ -45,17 +54,32 @@ const PATTERNS: [RegExp, (m: RegExpExecArray) => Mention | null][] = [
     (m) => ({ lowerMin: toMinutes(m[1], m[2]), upperMin: toMinutes(m[1], m[2]) })],
 ];
 
+// A duration is runtime only with a cue nearby, or when it is the whole answer (a poll reply like "30 to 60 min").
+const CUE = /\b(?:left|remaining|remains?|battery|backup|runtime|lasts?|good for|until (?:it|empty|dies)|(?:display|screen) says|should last)\b/;
+const FILLER = /\b(?:about|around|approximately|roughly|maybe|probably|like|only|just)\b|[~?!.]/g;
+const CUE_WINDOW = 6; // words on each side, within the same clause
+
+function isRuntime(clause: string, offset: number, length: number): boolean {
+  const words = (s: string) => s.split(/\s+/).filter(Boolean);
+  const before = clause.slice(0, offset);
+  const after = clause.slice(offset + length);
+  if (CUE.test([...words(before).slice(-CUE_WINDOW), ...words(after).slice(0, CUE_WINDOW)].join(" "))) return true;
+  return `${before} ${after}`.replace(FILLER, " ").trim() === "";
+}
+
 export function extractRuntime(text: string): Extraction {
   const sentences = text.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean);
   const found: { mention: Mention; evidence: string }[] = [];
   for (const sentence of sentences) {
-    let s = normalize(sentence);
-    for (const [re, read] of PATTERNS) {
-      s = s.replace(re, (...args) => {
-        const mention = read(args.slice(0, -2) as unknown as RegExpExecArray);
-        if (mention) found.push({ mention, evidence: sentence });
-        return " ".repeat(args[0].length);
-      });
+    for (let clause of normalize(sentence).split(/[,;:]|\bbut\b/)) {
+      for (const [re, read] of PATTERNS) {
+        clause = clause.replace(re, (...args) => {
+          const [match, offset, whole] = [args[0] as string, args.at(-2) as number, args.at(-1) as string];
+          const mention = read(args.slice(0, -2) as unknown as RegExpExecArray);
+          if (mention && isRuntime(whole, offset, match.length)) found.push({ mention, evidence: sentence });
+          return " ".repeat(match.length);
+        });
+      }
     }
   }
   const distinct = new Map(found.map((f) => [`${f.mention.lowerMin}-${f.mention.upperMin}`, f]));

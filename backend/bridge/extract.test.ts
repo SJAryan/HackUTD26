@@ -53,3 +53,32 @@ test("no runtime or conflicting numbers need review with runtime unset", () => {
 test("elapsed time is not runtime", () => {
   assert.deepEqual(runtime("Power went out 3 hours ago. Backup says 45 minutes."), [45, 45]);
 });
+
+const review = (text: string) => {
+  const x = extractRuntime(text);
+  assert.equal(x.kind, "needs_review", `${text} -> ${JSON.stringify(x)}`);
+  assert.ok(!("lowerMin" in x) && !("upperMin" in x), text);
+};
+
+test("upper bounds keep a zero lower bound", () => {
+  assert.deepEqual(runtime("no more than 30 minutes left"), [0, 30]);
+  assert.deepEqual(runtime("not more than 30 minutes of backup"), [0, 30]);
+  assert.deepEqual(runtime("at most 45 minutes of battery"), [0, 45]);
+  assert.deepEqual(runtime("up to an hour of backup"), [0, 60]);
+  assert.deepEqual(runtime("only about 20 minutes at most on the battery"), [0, 20]);
+  assert.deepEqual(runtime("battery is good for no longer than 40 minutes"), [0, 40]);
+});
+
+test("lower bounds are unchanged", () => {
+  assert.deepEqual(runtime("more than 30 minutes left"), [30, undefined]);
+});
+
+test("elapsed or cue-less durations are never runtime", () => {
+  review("The power has been out for 2 hours");
+  review("we've had no power since 3 hours ago");
+  review("I need help in 30 minutes");
+  review("It's been 2 hours now");
+  review("We've been without power for the past 3 hours");
+  assert.deepEqual(runtime("Power's been out for 2 hours, battery says 40 minutes left"), [40, 40]);
+  assert.deepEqual(runtime("I need help in 30 minutes. The backup has about 45 minutes left."), [45, 45]);
+});

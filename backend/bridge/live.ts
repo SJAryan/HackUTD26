@@ -1,12 +1,14 @@
-// TL-08: poll Photon for check-ins from the enrolled test sender and record them with ingestCheckin.
+// TL-08: poll Photon for check-ins from the enrolled test sender and record them with ingestCheckin,
+// then send committed ETA intents from A's bridge_outbox view back into that sender's thread.
 // Usage: npm run live   (Ctrl+C to stop; restarts resume from .bridge-state.json)
-// Logs never include phone numbers, the project ID or the API key.
+// Logs never include phone numbers, the project ID, the API key, invite codes or tokens.
 import { readFileSync, writeFileSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
 import { ApiError, Photon } from "@photon-ai/api";
 import { configuration } from "./agent.ts";
 import { handle, householdFor, inboundText, type Deps, type PhotonItem } from "./inbound.ts";
-import { DB, HOST, connect, finish, ingestVia } from "./stdb.ts";
+import { classifySendError, processOutbox, type OutboxDeps, type SentLog, type Space } from "./outbox.ts";
+import { DB, HOST, connect, finish, ingestVia, requireBridgeRole } from "./stdb.ts";
 
 const STATE_FILE = new URL("./.bridge-state.json", import.meta.url);
 const POLL_MS = 2_000;
@@ -14,9 +16,10 @@ const OVERLAP_MS = 60_000; // re-read recent history for eventual consistency; t
 const KEEP_SEEN = 500;
 
 // floor: messages created before the first launch are never processed. cursor: resume point.
-type State = { floor: string; cursor: string; seen: string[] };
+// space: the enrolled sender's thread, learned from their own message. outbox: per-key send record.
+type State = { floor: string; cursor: string; seen: string[]; space?: Space; outbox: SentLog };
 
-const loadState = (): State | undefined => {
+const loadState = (): Partial<State> | undefined => {
   try { return JSON.parse(readFileSync(STATE_FILE, "utf8")); } catch { return undefined; }
 };
 const saveState = (s: State) => writeFileSync(STATE_FILE, JSON.stringify(s, null, 2) + "\n");
@@ -35,11 +38,13 @@ process.on("SIGINT", () => { console.log("Stopping."); finish(conn, 0); });
 try {
   const c = configuration();
   const binding = { sender: c.sender, householdId: required("BRIDGE_SENDER_HOUSEHOLD"), incidentId: required("BRIDGE_INCIDENT_ID") };
-  const photon = new Photon({ headers: { Authorization: `Bearer ${c.key}` } });
+  const photon = new Photon({ headers: { Authorization: `Bearer ${c.key}` }, timeoutMs: 15_000 });
   conn = await connect();
+  await requireBridgeRole(conn, binding.incidentId);
+  const db = conn;
 
   const deps: Deps = {
-    ingest: ingestVia(conn),
+    ingest: ingestVia(db),
     reply: async (to, parentMessageId, text) => {
       try {
         await photon.projects.sendMessage({
@@ -55,10 +60,30 @@ try {
     log: (line) => console.log(line),
   };
 
+  const outboxDeps: OutboxDeps = {
+    send: async (space, key, body) => {
+      try {
+        await photon.projects.sendMessage({
+          path: { id: c.project },
+          headers: { "idempotency-key": key },
+          body: { spaceId: space.spaceId, senderId: space.senderId, content: { type: "text", format: "plain", text: body } },
+        });
+        return "accepted";
+      } catch (error) {
+        console.log(`OUTBOX ${key} send error: ${describeError(error)}`);
+        return classifySendError(error);
+      }
+    },
+    log: (line) => console.log(line),
+    now: () => Date.now(),
+  };
+
   const now = new Date().toISOString();
-  const state = loadState() ?? { floor: now, cursor: now, seen: [] };
+  const loaded = loadState();
+  const state: State = { floor: now, cursor: now, seen: [], outbox: {}, ...loaded };
   const seen = new Set(state.seen);
-  console.log(`Ready. LIVE: test sender -> ${binding.householdId} in ${binding.incidentId}; SpacetimeDB ${DB} at ${HOST}; resuming from ${state.cursor}.`);
+  const noted = new Set<string>();
+  console.log(`Ready. LIVE as bridge for ${binding.incidentId}: test sender -> ${binding.householdId}; SpacetimeDB ${DB} at ${HOST}; resuming from ${state.cursor}.`);
 
   while (true) {
     try {
@@ -86,6 +111,7 @@ try {
             seen.add(m.id);
             continue;
           }
+          if (event.replyTo) state.space = event.replyTo; // the thread ETAs go to
           const outcome = await handle(event, householdId, binding.incidentId, deps, seen, "LIVE");
           if (outcome === "failed" && (!retryFrom || at < Date.parse(retryFrom))) retryFrom = m.createdAt;
         }
@@ -94,6 +120,11 @@ try {
       state.cursor = retryFrom ?? next;
       state.seen = [...seen].slice(-KEEP_SEEN);
       saveState(state);
+
+      // Committed jobs -> ETA texts. Saved after every pass so an accepted key is never resent after a restart.
+      if (await processOutbox(db.db.bridgeOutbox.iter(), binding.householdId, state.space, state.outbox, outboxDeps, noted)) {
+        saveState(state);
+      }
       await sleep(POLL_MS);
     } catch (error) {
       // 429 or a transient failure: back off instead of polling faster.
