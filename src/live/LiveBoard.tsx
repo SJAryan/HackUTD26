@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Timestamp } from 'spacetimedb';
-import { useReducer, useTable } from 'spacetimedb/react';
+import { useReducer, useSpacetimeDB, useTable } from 'spacetimedb/react';
 import { reducers, tables } from '../module_bindings';
 import { LANE_LABEL, signed, type Lane } from '../demo/fixture';
 import { Icon } from '../ui/icons';
 import { LanePill } from '../screens/Board';
 import { Thread } from './LivePhone';
+import type { CheckinRound, Followup } from '../module_bindings/types';
 import { POLL, errorText, evaluateHousehold, hhmm, ms, newId, titleCase, type LiveCase } from './model';
 
 const RANK: Record<Lane, number> = { act: 0, watch: 1, unknown: 2, silent: 3, dispatched: 4, registered: 5 };
@@ -30,6 +31,8 @@ export function LiveBoard() {
   const [assets] = useTable(tables.coordinatorAssets);
   const [jobs] = useTable(tables.coordinatorJobs);
   const [checkins] = useTable(tables.coordinatorCheckins);
+  const [rounds] = useTable(tables.coordinatorRounds);
+  const [followups] = useTable(tables.coordinatorFollowups);
   const [incidents] = useTable(tables.myIncident);
   const incident = incidents[0];
   const [stats] = useTable(tables.coordinatorRegistryStats);
@@ -39,9 +42,9 @@ export function LiveBoard() {
   const rows = useMemo(
     () =>
       households
-        .map((h) => ({ h, c: evaluateHousehold(h, routes, drivers, assets, now) }))
+        .map((h) => ({ h, c: evaluateHousehold(h, routes, drivers, assets, currentRound(rounds, h.id), now) }))
         .sort((a, b) => RANK[a.c.lane] - RANK[b.c.lane] || (a.c.best?.margin ?? 999) - (b.c.best?.margin ?? 999) || a.h.id.localeCompare(b.h.id)),
-    [households, routes, drivers, assets, now],
+    [households, routes, drivers, assets, rounds, now],
   );
   const counts = (l: Lane) => rows.filter((r) => r.c.lane === l).length;
   const open = rows.find((r) => r.h.id === selected) ?? null;
@@ -78,7 +81,7 @@ export function LiveBoard() {
             <div key={l} className={`kpi kpi-${l}`}>
               <span className="kpi-label">{LANE_LABEL[l]}</span>
               <b>{counts(l)}</b>
-              <span className="kpi-sub">{l === 'act' ? 'Under 15 min' : l === 'watch' ? '15 min or more' : l === 'unknown' ? 'Runtime unknown' : 'No check-in yet'}</span>
+              <span className="kpi-sub">{l === 'act' ? 'Under 15 min' : l === 'watch' ? '15 min or more' : l === 'unknown' ? 'Runtime unknown' : 'Check-in overdue'}</span>
             </div>
           ))}
           <div className="kpi kpi-res">
@@ -128,9 +131,11 @@ export function LiveBoard() {
             </tbody>
           </table>
         </section>
+
+        <CallbackQueue followups={followups} now={now} onOpen={setSelected} />
       </div>
 
-      {open && <LiveDrawer key={open.h.id} h={open.h} c={open.c} incidentId={incident?.id ?? ''} onClose={() => setSelected(null)} />}
+      {open && <LiveDrawer key={open.h.id} h={open.h} c={open.c} round={currentRound(rounds, open.h.id)} followup={currentFollowup(followups, rounds, open.h.id)} incidentId={incident?.id ?? ''} now={now} onClose={() => setSelected(null)} />}
     </div>
   );
 }
@@ -142,7 +147,8 @@ function latestCheckin<T extends Checkin>(checkins: readonly T[], id: string) {
 
 type HouseholdRow = Parameters<typeof evaluateHousehold>[0] & { label: string };
 
-function LiveDrawer({ h, c, incidentId, onClose }: { h: HouseholdRow; c: LiveCase; incidentId: string; onClose: () => void }) {
+type DrawerProps = { h: HouseholdRow; c: LiveCase; round?: CheckinRound; followup?: Followup; incidentId: string; now: number; onClose: () => void };
+function LiveDrawer({ h, c, round, followup, incidentId, now, onClose }: DrawerProps) {
   const [checkins] = useTable(tables.coordinatorCheckins);
   const [jobs] = useTable(tables.coordinatorJobs);
   const reserve = useReducer(reducers.reserve);
@@ -231,6 +237,7 @@ function LiveDrawer({ h, c, incidentId, onClose }: { h: HouseholdRow; c: LiveCas
         <LanePill lane={c.lane} />
         <button className="icon-btn" onClick={onClose} aria-label="Close details"><Icon name="close" /></button>
       </header>
+      {!job && <p className="drawer-reason">{titleCase(c.reason)}.{c.silent && c.lane !== 'silent' ? ' The check-in round is also overdue.' : ''}</p>}
 
       <section className="block">
         <h3>Latest report</h3>
@@ -246,9 +253,10 @@ function LiveDrawer({ h, c, incidentId, onClose }: { h: HouseholdRow; c: LiveCas
             </span>
           </blockquote>
         ) : (
-          <p className="sub">No check-in yet. This household stays in Silent until it replies.</p>
+          <p className="sub">No check-in yet, so the runtime is unknown.</p>
         )}
-        {!job && (
+        {/* After dispatch, a reply is still recorded while a round is open: it closes the callback. */}
+        {(!job || round) && (
           <div className="record">
             <span className="sub">Record a reply taken by phone</span>
             <div className="record-row">
@@ -262,6 +270,10 @@ function LiveDrawer({ h, c, incidentId, onClose }: { h: HouseholdRow; c: LiveCas
           </div>
         )}
       </section>
+
+      {/* An active round or callback stays visible after dispatch: help on the way does not
+          answer the check-in, so its owner, evidence and audit trail must not disappear. */}
+      {(!job || round) && <Outreach h={h} round={round} followup={followup} incidentId={incidentId} now={now} />}
 
       {!job && c.options.length > 0 && (
         <section className="block">
@@ -350,5 +362,149 @@ function LiveDrawer({ h, c, incidentId, onClose }: { h: HouseholdRow; c: LiveCas
         </section>
       )}
     </aside>
+  );
+}
+
+// ---- TL-11 outreach rounds and callbacks (A's openCheckinRound / claimFollowup) ----
+
+// The household's open or silent round. A reply closes it on the server (answered).
+function currentRound(rounds: readonly CheckinRound[], householdId: string) {
+  return rounds.find((r) => r.householdId === householdId && (r.status === 'open' || r.status === 'silent'));
+}
+// The callback for that round, while it still needs someone.
+function currentFollowup(followups: readonly Followup[], rounds: readonly CheckinRound[], householdId: string) {
+  const r = currentRound(rounds, householdId);
+  return r && followups.find((f) => f.roundId === r.id && f.status !== 'cancelled');
+}
+
+const short = (hex: string) => hex.slice(0, 6);
+function useOwner() {
+  const { identity } = useSpacetimeDB();
+  const me = identity?.toHexString();
+  return (owner: { toHexString(): string }) => (owner.toHexString() === me ? 'You' : `Coordinator ${short(owner.toHexString())}`);
+}
+const dueText = (due: number, now: number) => {
+  const s = Math.round((due - now) / 1000);
+  return s > 0 ? `due ${hhmm(due)}, in ${s < 90 ? `${s} s` : `${Math.round(s / 60)} min`}` : `overdue since ${hhmm(due)}`;
+};
+
+type Status = { kind: 'idle' | 'sending' | 'error'; text?: string };
+
+function Outreach({ h, round, followup, incidentId, now }: { h: HouseholdRow; round?: CheckinRound; followup?: Followup; incidentId: string; now: number }) {
+  const open = useReducer(reducers.openCheckinRound);
+  const [status, setStatus] = useState<Status>({ kind: 'idle' });
+  // One round per click, reused on retry; the server ignores a repeated roundKey.
+  const roundKey = useRef<string | null>(null);
+
+  const start = () => {
+    if (status.kind === 'sending') return;
+    roundKey.current ??= `round-${h.id}-${newId()}`;
+    setStatus({ kind: 'sending' });
+    open({ roundKey: roundKey.current, incidentId, householdId: h.id })
+      .then(() => { roundKey.current = null; setStatus({ kind: 'idle' }); })
+      .catch((e: unknown) => setStatus({ kind: 'error', text: errorText(e) }));
+  };
+
+  return (
+    <section className="block">
+      <h3>Check-in round</h3>
+      {!round && (
+        <>
+          <p className="sub">Start a round when you reach out to {h.id}. If no reply comes before it is due, the household moves to Silent and you own the callback.</p>
+          <button className="btn btn-secondary" onClick={start} disabled={status.kind === 'sending'}>
+            {status.kind === 'sending' ? 'Starting…' : `Start a check-in round for ${h.id}`}
+          </button>
+        </>
+      )}
+      {round && round.status === 'open' && (
+        <p className="sub">Round {String(round.id)} opened {hhmm(ms(round.openedAt))}, {dueText(ms(round.dueAt), now)}. A reply closes it.</p>
+      )}
+      {round && round.status === 'silent' && !followup && <p className="sub">Round {String(round.id)} is overdue without a reply.</p>}
+      {followup && <Callback f={followup} now={now} />}
+      {status.kind === 'error' && <p className="result result-conflict" role="alert"><Icon name="alert" size={15} /> {status.text}</p>}
+    </section>
+  );
+}
+
+// One callback: owner, due time, escalation level, last evidence and its audit trail.
+function Callback({ f, now }: { f: Followup; now: number }) {
+  const owner = useOwner();
+  const [audit] = useTable(tables.coordinatorFollowupAudit);
+  const trail = audit.filter((a) => a.followupId === f.id).sort((a, b) => ms(a.at) - ms(b.at));
+  return (
+    <div className="callback">
+      <p>
+        <b>Silent.</b> Callback owner: {owner(f.owner)}{f.status === 'claimed' ? ' (claimed)' : ''}. {titleCase(dueText(ms(f.dueAt), now))}.
+        {f.escalationLevel > 0 && ` Escalation level ${f.escalationLevel}.`}
+      </p>
+      <p className="sub">
+        {f.lastObservedAt
+          ? `Last evidence ${hhmm(ms(f.lastObservedAt))}: ${f.runtimeLowerMin === undefined ? 'runtime unknown' : `${f.runtimeLowerMin}${f.runtimeUpperMin === undefined ? '+' : ` to ${f.runtimeUpperMin}`} min of backup`}.`
+          : 'No evidence before the round. Runtime unknown.'}
+      </p>
+      <ClaimButton f={f} />
+      {trail.length > 0 && (
+        <ol className="audit">
+          {trail.map((a) => (
+            <li key={String(a.id)}><span>{hhmm(ms(a.at))}</span> {titleCase(a.action)}: {a.note}. Owner: {owner(a.owner)}.</li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+function ClaimButton({ f }: { f: Followup }) {
+  const claim = useReducer(reducers.claimFollowup);
+  const { identity } = useSpacetimeDB();
+  const [status, setStatus] = useState<Status>({ kind: 'idle' });
+  const mine = f.status === 'claimed' && f.owner.toHexString() === identity?.toHexString();
+  if (mine) return null;
+  const go = () => {
+    if (status.kind === 'sending') return;
+    setStatus({ kind: 'sending' });
+    // The version on screen: if someone else claimed first, the server answers conflict:.
+    claim({ followupId: f.id, expectedVersion: f.version })
+      .then(() => setStatus({ kind: 'idle' }))
+      .catch((e: unknown) => setStatus({ kind: 'error', text: errorText(e) }));
+  };
+  return (
+    <>
+      <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); go(); }} disabled={status.kind === 'sending'}>
+        {status.kind === 'sending' ? 'Claiming…' : `Claim the callback for ${f.householdId}`}
+      </button>
+      {status.kind === 'error' && <p className="result result-conflict" role="alert"><Icon name="alert" size={15} /> {status.text}</p>}
+    </>
+  );
+}
+
+function CallbackQueue({ followups, now, onOpen }: { followups: readonly Followup[]; now: number; onOpen: (id: string) => void }) {
+  const owner = useOwner();
+  const live = [...followups].filter((f) => f.status !== 'cancelled').sort((a, b) => ms(a.dueAt) - ms(b.dueAt));
+  return (
+    <section className="panel queue" aria-label="Callback queue">
+      <header className="queue-head">
+        <h2>Callbacks</h2>
+        <span className="sub">{live.length === 0 ? 'No silent households need a callback.' : `${live.length} silent household${live.length === 1 ? '' : 's'} to call back`}</span>
+      </header>
+      {live.length > 0 && (
+        <table className="table">
+          <thead>
+            <tr><th>Household</th><th>Owner</th><th>Due</th><th className="num">Level</th><th /></tr>
+          </thead>
+          <tbody>
+            {live.map((f) => (
+              <tr key={String(f.id)} onClick={() => onOpen(f.householdId)}>
+                <td><button className="row-open" onClick={() => onOpen(f.householdId)}><b>{f.householdId}</b></button></td>
+                <td>{owner(f.owner)}{f.status === 'claimed' ? ', claimed' : ''}</td>
+                <td>{dueText(ms(f.dueAt), now)}</td>
+                <td className="num">{f.escalationLevel}</td>
+                <td><ClaimButton f={f} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
   );
 }
