@@ -2,12 +2,18 @@
 // Suggestions are shown only to the resident, who confirms, corrects or skips.
 // Only a confirmed need reaches dispatch. Never used for pricing, claims or eligibility.
 
+// Signals are coded fields, not free text, so "trampoline" or "does not use oxygen"
+// cannot produce a suggestion. Codes outside these lists are ignored.
+const POWERED_EQUIPMENT = ['oxygen_concentrator', 'ventilator', 'cpap', 'home_dialysis'] as const;
+const HOME_ACCESS = ['ramp', 'stair_lift', 'widened_doors'] as const;
+const AUTO_ACCESS = ['hand_controls', 'wheelchair_lift'] as const;
+
 export interface PolicySignals {
   householdId: string;
-  lifePolicyNotes: string[];
+  lifePolicyEquipment: Array<(typeof POWERED_EQUIPMENT)[number]>; // equipment listed on the life policy
   disabilityPolicy: boolean;
-  homeMods: string[];
-  autoMods: string[];
+  homeMods: Array<(typeof HOME_ACCESS)[number]>;
+  autoMods: Array<(typeof AUTO_ACCESS)[number]>;
 }
 
 export interface NeedSuggestion {
@@ -18,33 +24,26 @@ export interface NeedSuggestion {
   sources: string[]; // which signals produced it, for the resident's confirm screen
 }
 
-const POWERED_EQUIPMENT = ['oxygen', 'ventilator', 'cpap', 'dialysis'];
-const HOME_ACCESS = ['ramp', 'stair lift', 'widened doors'];
-const AUTO_ACCESS = ['hand controls', 'wheelchair lift'];
-
-const matches = (items: string[], terms: string[]) =>
-  items.filter(item => terms.some(term => item.toLowerCase().includes(term)));
+const known = <T extends string>(items: readonly string[], codes: readonly T[]) =>
+  items.filter((item): item is T => (codes as readonly string[]).includes(item));
 
 export function suggestNeeds(signals: PolicySignals): NeedSuggestion[] {
   const suggestions: NeedSuggestion[] = [];
 
   // A disability policy alone is too vague to suggest anything; it only raises confidence.
-  const notes = matches(signals.lifePolicyNotes, POWERED_EQUIPMENT);
-  if (notes.length) {
+  const equipment = known(signals.lifePolicyEquipment, POWERED_EQUIPMENT);
+  if (equipment.length) {
     suggestions.push({
       id: 'powered_equipment',
       label: 'Powered equipment that needs battery backup during an outage',
       dispatchNeed: 'battery',
       confidence: signals.disabilityPolicy ? 'high' : 'medium',
-      sources: [
-        ...notes.map(() => 'life policy note'),
-        ...(signals.disabilityPolicy ? ['disability policy'] : []),
-      ],
+      sources: ['life policy: listed equipment', ...(signals.disabilityPolicy ? ['disability policy'] : [])],
     });
   }
 
-  const home = matches(signals.homeMods, HOME_ACCESS);
-  const auto = matches(signals.autoMods, AUTO_ACCESS);
+  const home = known(signals.homeMods, HOME_ACCESS);
+  const auto = known(signals.autoMods, AUTO_ACCESS);
   if (home.length || auto.length) {
     suggestions.push({
       id: 'step_free_access',
@@ -57,14 +56,23 @@ export function suggestNeeds(signals: PolicySignals): NeedSuggestion[] {
   return suggestions;
 }
 
-// The resident's answer. Skip stores nothing; a correction replaces the suggestion's need.
+// What A stores with the consent record. Skip stores nothing.
+// Step-free access has no dispatchNeed but is kept as a driver note.
+export interface ConfirmedNeed {
+  id: NeedSuggestion['id'];
+  dispatchNeed?: string;
+}
+
 export type Confirmation =
   | { choice: 'confirm'; suggestion: NeedSuggestion }
-  | { choice: 'correct'; dispatchNeed: string }
+  | { choice: 'correct'; need: ConfirmedNeed }
   | { choice: 'skip' };
 
-export function confirmedNeed(answer: Confirmation): string | undefined {
-  if (answer.choice === 'confirm') return answer.suggestion.dispatchNeed;
-  if (answer.choice === 'correct') return answer.dispatchNeed;
+export function confirmedNeed(answer: Confirmation): ConfirmedNeed | undefined {
+  if (answer.choice === 'confirm') {
+    const { id, dispatchNeed } = answer.suggestion;
+    return dispatchNeed === undefined ? { id } : { id, dispatchNeed };
+  }
+  if (answer.choice === 'correct') return answer.need;
   return undefined;
 }
