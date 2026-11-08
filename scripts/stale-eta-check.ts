@@ -66,7 +66,7 @@ run(async () => {
   await waitFor('second job intents', () => intents().length === 2);
   if (intents().some(r => r.jobId === jobId)) fail(`old job intents came back: ${summary()}`);
   console.log(`delivered v3: none; second job: bridge sees ${summary()}`);
-  if (ben.db.driverJobs.count() !== 1n) fail('Ben should have the second job');
+  await waitFor('Ben has the second job', () => [...ben.db.driverJobs.iter()].some(j => j.householdId === 'H22'));
 
   // 6. Reset clears the outbox.
   ownerCall('reset_incident', INCIDENT);

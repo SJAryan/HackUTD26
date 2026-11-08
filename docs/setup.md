@@ -147,7 +147,9 @@ A driver or resident invite is rejected unless that driver or household belongs 
 incident. Invite codes are single-use but do not expire; share them privately.
 
 Every session can read `my_role` and `my_incident`. The browser keeps its identity token in
-`localStorage`, so a role survives reloads; use a private window for a second identity.
+`localStorage`, so a role survives reloads. Each screen (board, driver phone, resident phone)
+has its own token, so a second driver or resident needs another Chrome profile or browser, not a
+private window (see "Demo identities" in the runbook).
 
 ## Seed
 
@@ -526,13 +528,22 @@ Remove-Item Env:SPACETIMEDB_SERVER, Env:SPACETIMEDB_DB_NAME, Env:DEMO_FOLLOWUP_S
 Only run `demo:invites` when a screen has no role yet, since claimed roles survive a reset.
 Unclaimed codes don't expire, so they pile up.
 
-**Demo identities.** Each role needs its own browser identity, because the token lives in that
-browser profile's `localStorage`:
+**Demo identities.** Each screen keeps its own token in `localStorage` (see `src/main.tsx`):
+the board is the coordinator, the driver phone is the driver, and the resident phone and
+registration site are the resident. So one browser profile holds at most one coordinator, one
+driver and one resident.
 
-- **Browser profiles:** use one Chrome profile (or private window) per role. That's the lead
-  coordinator, the second-incident coordinator, drivers Ana and Ben, and residents H17 and H22.
+- **Browser profiles:** use a separate Chrome profile (or a separate browser or device) for each
+  second identity of the same kind. For example:
+  - profile 1: lead coordinator, Ana and H17;
+  - profile 2: second-incident coordinator, Ben and H22.
+- **Not private windows:** Incognito windows of one Chrome session share their storage, so they
+  don't give separate identities.
 - **Codes:** the owner sends each code privately, never in the repo, an issue or a screenshot.
-  Each screen claims its code once, through Connection check then Claim role.
+- **Where to claim:** claim each code on its own screen. Open the board, driver phone or resident
+  phone in Live mode and use that screen's **Claim role** form. The Connection check screen
+  uses the coordinator identity, so a driver or resident code claimed there binds the wrong
+  identity.
 - **Bridge:** claims its code once through `BRIDGE_INVITE_CODE` in `backend/bridge/.env`, then
   reconnects with `.stdb-token`. Both files are gitignored.
 - **Recovery:** if a profile is cleared, mint one new code for that role only.
