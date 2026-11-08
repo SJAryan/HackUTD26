@@ -415,3 +415,30 @@ form .fixture-note { padding: 0; }
 .offer-actions { display: flex; justify-content: flex-end; gap: 8px; }
 @media (min-width: 1180px) { .offer { font-size: 15.5px; } .offer-fine { font-size: 13.5px; } }
 .offer .check { font-size: inherit; color: var(--ink); }
+
+/* TL-07: live mode */
+.mode { display: inline-flex; padding: 2px; border: 1px solid var(--rule); border-radius: 8px; background: var(--ground); }
+.mode button { height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; font-size: 12.5px; font-weight: 600; color: var(--mute); cursor: pointer; }
+.mode button.on { background: var(--white); color: var(--ink); box-shadow: var(--shadow); }
+.sim-live { background: var(--green-wash); color: var(--green); }
+.gate { max-width: 460px; margin: 24px auto; display: flex; flex-direction: column; gap: 12px; padding: 24px; background: var(--white); border: 1px solid var(--rule); border-radius: 12px; box-shadow: var(--shadow); }
+.gate > svg { color: var(--red); }
+.gate h2 { font-size: 18px; }
+.gate p { color: var(--ink-2); }
+.gate .btn { align-self: flex-start; }
+.live-callout { margin: 0 auto 16px; max-width: 600px; }
+.live-notice > svg { color: var(--green-solid); }
+.live-job { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--rule); }
+.live-job h2 { font-size: 18px; }
+.thread-event { display: flex; align-items: center; gap: 6px; align-self: center; font-size: 12.5px; color: var(--green); background: var(--green-wash); border-radius: 999px; padding: 3px 10px; }
+.bubble.sending { opacity: 0.6; }
+.bubble.failed { background: var(--amber-wash); color: var(--ink); border: 1px solid var(--amber-rule); }
+.link-btn { background: none; border: 0; padding: 0; color: var(--red); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.route .link-btn { display: inline-block; margin-top: 8px; font-size: 12.5px; }
+.bubble.failed .link-btn { color: var(--amber); }
+.steps-3 { grid-template-columns: repeat(3, 1fr); }
+.drawer-thread { display: flex; flex-direction: column; max-height: 280px; overflow-y: auto; border: 1px solid var(--rule); border-radius: var(--radius); }
+.drawer-thread .thread { padding: 10px; }
+.record { display: flex; flex-direction: column; gap: 6px; }
+.record-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.btn-sm { height: 30px; padding: 0 10px; font-size: 12.5px; }
