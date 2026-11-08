@@ -1,4 +1,4 @@
-# Before Zero: setup and shared contract (TL-01, TL-05, TL-06, TL-09, TL-11, TL-15, TL-18)
+# Before Zero: setup and shared contract (TL-01, TL-05, TL-06, TL-09, TL-11, TL-12, TL-15, TL-18)
 
 Owner: A (backend and integration). Scaffolded with `spacetime init --template react-ts`.
 All data in the seed is synthetic.
@@ -56,6 +56,7 @@ npm run stdb:reset:local && npm run check:tl05
 npm run stdb:reset:local && npm run check:tl06
 npm run stdb:reset:local && npm run check:tl09
 npm run stdb:reset:local && npm run check:tl11
+npm run stdb:reset:local && npm run check:tl12
 npm run stdb:reset:local && npm run check:tl15
 npm run stdb:reset:local && npm run check:tl18
 ```
@@ -91,6 +92,11 @@ npm run stdb:reset:local && npm run check:tl18
   claimed, cancelled, and calling the sweep directly is refused. After delivery, `releaseJob`
   frees BAT-01 and Ana, and BAT-01 is reserved for H22. Ends with
   `PASS: TL-11 follow-ups and release`.
+- **TL-12** (stale ETA): after a reserve the bridge sees exactly the job's two v1 intents, and a
+  replayed reserve adds none. Once the driver marks arrived (v2) they drop out, and none come
+  back after delivery or release. A second job shows only its own intents, and `resetIncident`
+  empties the outbox. It also prints a `KNOWN GAP` line: a detour confirmed after the reserve
+  does not refresh the v1 ETA. Ends with `PASS: TL-12 no stale ETA intents`.
 - **TL-15:** H17 confirms `powered_equipment` (a retry adds nothing) and the coordinator sees it
   with dispatch need `battery` and "self-confirmed via preparedness profile". A second
   confirmation, an unknown need ID and a reused confirmation ID are rejected and store nothing.
@@ -452,10 +458,99 @@ spacetime publish --server maincloud --module-path spacetimedb time-left-hackutd
 
 The publishing identity becomes the owner who creates invites on Maincloud.
 
-Maincloud is behind main (TL-09 and TL-11 added tables), so it needs that republish before
-registration or follow-ups work live. Before a recording or a live run, the owner runs
+As of the TL-12 run, Maincloud's schema matches main except TL-15 (`confirmed_need`,
+`confirmSuggestedNeed` and two views). A publish without `--delete-data` adds it (see the
+runbook below). Before a recording or a live run, the owner runs
 `demo:reset` against Maincloud (see "Demo reset and invites"). Run `demo:invites` only when
 someone needs a new role.
+
+## Release and demo runbook (TL-12)
+
+**Backend ownership.** A (Ira) owns the SpacetimeDB module (`spacetimedb/src/index.ts`), the
+generated bindings, `scripts/`, this file and the Maincloud database `time-left-hackutd26`. The
+identity that published Maincloud is its owner: only it can run `demo:reset`, `demo:invites`,
+`create_invite` and `set_followup_interval`. C owns `spacetimedb/src/domain/` (dispatch and
+suggestion rules), B the Photon bridge (`backend/bridge/`), and D the React screens (`src/`).
+
+**Install** (fresh clone, Node 24, SpacetimeDB CLI 2.14.1):
+
+```bash
+npm ci && (cd spacetimedb && npm ci) && (cd backend/bridge && npm ci)
+spacetime build --module-path spacetimedb && npx tsc -b && npm run build
+npx tsx --test fixtures/*.test.ts          # C's rules
+(cd backend/bridge && npm test)            # B's bridge
+```
+
+**Local run.** Run `spacetime start` in one terminal, then:
+
+```bash
+npm run stdb:publish:local       # first time; seeds both incidents
+npm run stdb:reset:local         # wipe and reseed (clears roles too)
+npm run dev                      # http://localhost:5173
+```
+
+Then run every acceptance check, each after `npm run stdb:reset:local` (see "Acceptance checks").
+
+**Maincloud publish (owner).** Publish **without** `--delete-data`, so claimed roles and invites
+survive. Adding tables, reducers and views migrates in place:
+
+```bash
+spacetime publish --server maincloud --module-path spacetimedb time-left-hackutd26
+```
+
+If the CLI refuses because a change is not backward compatible, stop. `--delete-data=always`
+clears every role, so it needs the team's agreement and fresh invites for everyone.
+
+**Demo reset (owner)** before every recording or live run. It resets both incidents to the seed at
+the current time and sets the follow-up interval: 60 s for the live silent path, 300 s otherwise.
+
+```bash
+# bash
+SPACETIMEDB_SERVER=maincloud SPACETIMEDB_DB_NAME=time-left-hackutd26 DEMO_FOLLOWUP_SEC=60 npm run demo:reset
+SPACETIMEDB_SERVER=maincloud SPACETIMEDB_DB_NAME=time-left-hackutd26 npm run demo:invites
+```
+
+```powershell
+# PowerShell
+$env:SPACETIMEDB_SERVER = 'maincloud'; $env:SPACETIMEDB_DB_NAME = 'time-left-hackutd26'
+$env:DEMO_FOLLOWUP_SEC = '60'; npm run demo:reset
+npm run demo:invites
+Remove-Item Env:SPACETIMEDB_SERVER, Env:SPACETIMEDB_DB_NAME, Env:DEMO_FOLLOWUP_SEC
+```
+
+Only run `demo:invites` when a screen has no role yet, since claimed roles survive a reset.
+Unclaimed codes don't expire, so they pile up.
+
+**Demo identities.** Each role needs its own browser identity, because the token lives in that
+browser profile's `localStorage`:
+
+- **Browser profiles:** use one Chrome profile (or private window) per role. That's the lead
+  coordinator, the second-incident coordinator, drivers Ana and Ben, and residents H17 and H22.
+- **Codes:** the owner sends each code privately, never in the repo, an issue or a screenshot.
+  Each screen claims its code once, through Connection check then Claim role.
+- **Bridge:** claims its code once through `BRIDGE_INVITE_CODE` in `backend/bridge/.env`, then
+  reconnects with `.stdb-token`. Both files are gitignored.
+- **Recovery:** if a profile is cleared, mint one new code for that role only.
+
+**Live vs replay**
+
+| Sponsor feature | Status | How to tell |
+|---|---|---|
+| SpacetimeDB: views, atomic `reserve`, job thread, follow-up sweep | **Live** on Maincloud | Board, phones and thread update across windows without a refresh; `check:tl05` race |
+| Photon: inbound iMessage check-in | **Replay verified locally**; live round trip on Maincloud is TL-19 (#37, open) | `npm run replay` prints `REPLAY ... not a live integration`; a live run logs the Photon message ID as `eventId` |
+| Photon: ETA text after dispatch | Bridge unit tests and outbox view; **not yet run live** (#37) | `bridge_outbox` row sent once with its send key |
+| State Farm: preparedness profile, opt-in agent contact, policy-based need suggestion | **Prototype**: synthetic data, demo receipts (`L-<id>`), nobody is called | Screens say "Prototype – synthetic policy data" |
+
+**Known gaps** (TL-12 run, see #12):
+
+- **Stale ETA after a detour:** a detour confirmed after `reserve` doesn't refresh the job's ETA,
+  so the v1 ETA intent stays sendable. `check:tl12` prints it as `KNOWN GAP`.
+- **200 households not seeded:** C's generator (`domain/scale.ts`, #48) is merged, but the module
+  still seeds only H17 and H22.
+- **Invites don't expire:** unclaimed invites never expire, and there's no revoke reducer.
+- **TL-15 not on Maincloud:** it needs the publish above.
+- **Photon not yet run live:** the live round trip and ETA text on Maincloud are TL-19 (#37).
+- **One confirmed need per household** (TL-15), and job IDs keep counting across `demo:reset`.
 
 ## Known issues
 
