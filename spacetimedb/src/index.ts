@@ -1,7 +1,8 @@
 import { schema, table, t, SenderError, type InferSchema, type ReducerCtx } from 'spacetimedb/server';
 import { ScheduleAt, Timestamp } from 'spacetimedb';
 import { readyAt } from './rules';
-import type { ConfirmedNeed, NeedSuggestion } from './domain/suggest';
+import { suggestNeeds, type ConfirmedNeed, type NeedSuggestion } from './domain/suggest';
+import { policySignals } from '../../fixtures/policy-signals';
 
 // TL-05: private state, role-scoped views and atomic dispatch. All seed data is synthetic.
 // Tables are private; clients read through the views at the bottom of this file.
@@ -820,6 +821,12 @@ export const confirmSuggestedNeed = spacetimedb.reducer(
     if (!isConfirmable(needId)) throw new SenderError(`unknown needId ${needId}`);
     const done = ctx.db.confirmedNeed.householdId.find(me.subjectId);
     if (done) throw new SenderError(`conflict: ${me.subjectId} already confirmed ${done.needId}`);
+    // Only a need C's rules actually suggest for this household, so "self-confirmed via
+    // preparedness profile" is true. The signals are the same synthetic fixture the screen uses.
+    const signals = policySignals.find(s => s.householdId === me.subjectId);
+    if (!signals || !suggestNeeds(signals).some(s => s.id === needId)) {
+      throw new SenderError(`not suggested: ${me.subjectId} was not offered ${needId}`);
+    }
     ctx.db.confirmedNeed.insert({
       householdId: me.subjectId, confirmationId, incidentId: me.incidentId, needId,
       dispatchNeed: CONFIRMABLE_NEEDS[needId].dispatchNeed, confirmedAt: ctx.timestamp,
