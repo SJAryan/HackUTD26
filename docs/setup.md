@@ -96,7 +96,7 @@ await conn.reducers.claimInvite({ code }); // binds this session's identity to t
 |---|---|---|---|
 | `coordinator` | `''` | `ingestCheckin`, `confirmRouteReport`, `reserve` | `coordinator_*` and `job_messages` for its incident |
 | `driver` | driver ID | `postJobMessage`, `updateJob` (`arrived`) on its jobs | `driver_jobs`, `job_messages`: its own jobs only |
-| `bridge` | `''` | `ingestCheckin` | `bridge_outbox` for its incident |
+| `bridge` | `''` | `ingestCheckin` | `bridge_outbox` and `bridge_checkins` (receipts) for its incident |
 | `resident` | household ID | `postJobMessage`, `updateJob` (`delivered`) on its jobs | `resident_jobs`, `job_messages`: its own household only |
 
 A driver or resident invite is rejected unless that driver or household belongs to the invite's
@@ -139,7 +139,8 @@ Use the generated bindings: `import { DbConnection, tables, reducers } from './m
 All tables are private. Clients subscribe to views: `tables.myRole`, `tables.myIncident`,
 `tables.coordinatorHouseholds`, `tables.coordinatorCheckins`, `tables.coordinatorAssets`,
 `tables.coordinatorDrivers`, `tables.coordinatorRoutes`, `tables.coordinatorJobs`,
-`tables.driverJobs`, `tables.residentJobs`, `tables.jobMessages` and `tables.bridgeOutbox`.
+`tables.driverJobs`, `tables.residentJobs`, `tables.jobMessages`, `tables.bridgeOutbox` and
+`tables.bridgeCheckins`.
 A view change can arrive as a delete plus an
 insert, so read the current rows rather than relying on `onUpdate`.
 
@@ -165,6 +166,9 @@ conn.reducers.ingestCheckin({
   observation, the `household` row updates and `version` increments.
 - **Errors:** an unknown household or incident mismatch is rejected; lower > upper is rejected.
 - **Older report:** kept in `checkin`, but does not overwrite newer household evidence.
+- **Receipt for the bridge:** subscribe to `tables.bridgeCheckins` and wait for the row with your
+  `eventId`. It carries `householdId`, `observedAt`, `receivedAt` and the runtime the server
+  stored. A bridge session cannot read households, so use this instead of `coordinator_*`.
 
 **`confirmRouteReport`** (coordinator):
 

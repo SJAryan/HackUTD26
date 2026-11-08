@@ -8,7 +8,7 @@ import { connect, connectAs, fail, finish, rejects, run, sleep, waitFor } from '
 const TEXT = 'My backup shows 30-60 minutes left. Can the driver reach the side entrance?';
 
 run(async () => {
-  const queries = [tables.myIncident, tables.coordinatorHouseholds, tables.coordinatorCheckins];
+  const queries = [tables.myIncident, tables.coordinatorHouseholds, tables.coordinatorCheckins, tables.bridgeCheckins];
   const a = await connectAs('session A', 'bridge', 'tornado-1', '', queries);
   const b = await connectAs('session B', 'coordinator', 'tornado-1', '', queries);
   if (a.identity!.isEqual(b.identity!)) fail('sessions share an identity');
@@ -41,12 +41,25 @@ run(async () => {
     fail('session B saw the wrong H17 values');
   }
 
+  // The bridge confirms its own write through bridge_checkins; it cannot read households.
+  const receipts = () => [...a.db.bridgeCheckins.iter()].filter(c => c.eventId === checkin.eventId);
+  await waitFor('bridge sees its receipt', () => receipts().length === 1);
+  const r = receipts()[0];
+  if (r.householdId !== 'H17' || r.runtimeLowerMin !== 30 || r.runtimeUpperMin !== 60) fail('wrong receipt');
+  if (a.db.coordinatorHouseholds.count() !== 0n || b.db.bridgeCheckins.count() !== 0n) {
+    fail('bridge and coordinator views leak across roles');
+  }
+  console.log(
+    `session A (bridge) sees receipt ${r.eventId}: ${r.householdId} ${r.runtimeLowerMin}-${r.runtimeUpperMin} min, ` +
+      `received ${r.receivedAt.toDate().toISOString()}; it sees 0 households, the coordinator sees 0 receipts`
+  );
+
   // Replay of the same event ID must not change anything.
   await a.reducers.ingestCheckin(checkin);
   await sleep(500);
   const checkins = [...b.db.coordinatorCheckins.iter()].filter(c => c.eventId === checkin.eventId).length;
-  if (h17()!.version !== 1 || checkins !== 1) fail('replayed event changed state');
-  console.log('replay of the same eventId: no new effect (H17 still v1, 1 check-in row)');
+  if (h17()!.version !== 1 || checkins !== 1 || receipts().length !== 1) fail('replayed event changed state');
+  console.log('replay of the same eventId: no new effect (H17 still v1, 1 check-in row, 1 receipt)');
 
   const msg = await rejects('unknown household', () =>
     a.reducers.ingestCheckin({ ...checkin, eventId: 'tl01-bad', householdId: 'H99' }), /unknown household/);
@@ -55,8 +68,10 @@ run(async () => {
   const outsider = await connect('outsider', queries);
   const denied = await rejects('outsider check-in', () =>
     outsider.reducers.ingestCheckin({ ...checkin, eventId: 'tl01-outsider' }), /forbidden/);
-  if (outsider.db.coordinatorHouseholds.count() !== 0n) fail('outsider can read households');
-  console.log(`session without a role: ${denied}; sees 0 households`);
+  if (outsider.db.coordinatorHouseholds.count() + outsider.db.bridgeCheckins.count() !== 0n) {
+    fail('outsider can read households or receipts');
+  }
+  console.log(`session without a role: ${denied}; sees 0 households and 0 receipts`);
 
   console.log('PASS: TL-01 two-session subscription check');
   finish(0);
