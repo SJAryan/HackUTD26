@@ -1,4 +1,4 @@
-# Before Zero: setup and shared contract (TL-01, TL-05, TL-06, TL-09, TL-11, TL-12, TL-15, TL-18)
+# Before Zero: setup and shared contract (TL-01, TL-05, TL-06, TL-09, TL-11, TL-12, TL-15, TL-18, TL-20)
 
 Owner: A (backend and integration). Scaffolded with `spacetime init --template react-ts`.
 All data in the seed is synthetic.
@@ -59,6 +59,7 @@ npm run stdb:reset:local && npm run check:tl11
 npm run stdb:reset:local && npm run check:tl12
 npm run stdb:reset:local && npm run check:tl15
 npm run stdb:reset:local && npm run check:tl18
+npm run stdb:reset:local && npm run check:tl20
 ```
 
 - **TL-01:** a bridge session records H17's 02:00 check-in; a coordinator session sees H17 change
@@ -104,6 +105,10 @@ npm run stdb:reset:local && npm run check:tl18
   no sources, signals or confidence. Skipped H22 has no row. Household rows are unchanged and
   H17's numbers are still R4 +17, R4-ALT +6. `resetIncident` clears the confirmation. Ends with
   `PASS: TL-15 confirmed need storage`.
+- **TL-20:** after a reserve, Ana sees H17's synthetic address and backup device in
+  `driver_stops`. Ben, the resident, the coordinator and a session without a role see none. The
+  stop stays through arrived and delivered and is gone after `releaseJob`. H22, which has no
+  profile, shows `onFile: false` to Ben. Ends with `PASS: TL-20 driver stops`.
 - **TL-18:** checks the display labels and that the seed clock and every `freeAt` are now. Plays
   H17's story live (R4 +17, R4-ALT +6, then R4 -3 after the detour; server ETA = reserve time +
   24 min). It builds up state in every lead-incident table, confirms a coordinator and an
@@ -459,8 +464,8 @@ spacetime publish --server maincloud --module-path spacetimedb time-left-hackutd
 The publishing identity becomes the owner who creates invites on Maincloud.
 
 As of the TL-12 run, Maincloud's schema matches main except TL-15 (`confirmed_need`,
-`confirmSuggestedNeed` and two views). A publish without `--delete-data` adds it (see the
-runbook below). Before a recording or a live run, the owner runs
+`confirmSuggestedNeed` and two views) and TL-20 (the `driver_stops` view). A publish without
+`--delete-data` adds both (see the runbook below). Before a recording or a live run, the owner runs
 `demo:reset` against Maincloud (see "Demo reset and invites"). Run `demo:invites` only when
 someone needs a new role.
 
@@ -548,7 +553,7 @@ browser profile's `localStorage`:
 - **200 households not seeded:** C's generator (`domain/scale.ts`, #48) is merged, but the module
   still seeds only H17 and H22.
 - **Invites don't expire:** unclaimed invites never expire, and there's no revoke reducer.
-- **TL-15 not on Maincloud:** it needs the publish above.
+- **TL-15 and TL-20 not on Maincloud:** both need the publish above.
 - **Photon not yet run live:** the live round trip and ETA text on Maincloud are TL-19 (#37).
 - **One confirmed need per household** (TL-15), and job IDs keep counting across `demo:reset`.
 
