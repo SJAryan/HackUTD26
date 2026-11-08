@@ -11,8 +11,16 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  id: __t.string().primaryKey(),
+  id: __t.u64().primaryKey(),
+  requestId: __t.string().name("request_id"),
   incidentId: __t.string().name("incident_id"),
-  name: __t.string(),
+  householdId: __t.string().name("household_id"),
+  routeId: __t.string().name("route_id"),
+  driverId: __t.string().name("driver_id"),
+  assetId: __t.string().name("asset_id"),
+  version: __t.u32(),
   status: __t.string(),
+  etaAt: __t.timestamp().name("eta_at"),
+  createdBy: __t.identity().name("created_by"),
+  createdAt: __t.timestamp().name("created_at"),
 });

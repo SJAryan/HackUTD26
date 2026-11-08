@@ -6,7 +6,15 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import ClaimInviteReducer from "../claim_invite_reducer";
+import ConfirmRouteReportReducer from "../confirm_route_report_reducer";
+import CreateInviteReducer from "../create_invite_reducer";
 import IngestCheckinReducer from "../ingest_checkin_reducer";
+import ReserveReducer from "../reserve_reducer";
 
+export type ClaimInviteParams = __Infer<typeof ClaimInviteReducer>;
+export type ConfirmRouteReportParams = __Infer<typeof ConfirmRouteReportReducer>;
+export type CreateInviteParams = __Infer<typeof CreateInviteReducer>;
 export type IngestCheckinParams = __Infer<typeof IngestCheckinReducer>;
+export type ReserveParams = __Infer<typeof ReserveReducer>;
 

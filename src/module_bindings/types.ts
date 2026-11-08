@@ -14,9 +14,13 @@ export const Asset = __t.object("Asset", {
   id: __t.string(),
   incidentId: __t.string(),
   kind: __t.string(),
-  status: __t.string(),
+  freeAt: __t.timestamp(),
+  activeJobId: __t.option(__t.u64()),
 });
 export type Asset = __Infer<typeof Asset>;
+
+export const BridgeOutbox = __t.object("BridgeOutbox", {});
+export type BridgeOutbox = __Infer<typeof BridgeOutbox>;
 
 export const Checkin = __t.object("Checkin", {
   eventId: __t.string(),
@@ -30,23 +34,53 @@ export const Checkin = __t.object("Checkin", {
 });
 export type Checkin = __Infer<typeof Checkin>;
 
+export const Config = __t.object("Config", {
+  id: __t.u32(),
+  owner: __t.identity(),
+});
+export type Config = __Infer<typeof Config>;
+
+export const CoordinatorAssets = __t.object("CoordinatorAssets", {});
+export type CoordinatorAssets = __Infer<typeof CoordinatorAssets>;
+
+export const CoordinatorCheckins = __t.object("CoordinatorCheckins", {});
+export type CoordinatorCheckins = __Infer<typeof CoordinatorCheckins>;
+
+export const CoordinatorDrivers = __t.object("CoordinatorDrivers", {});
+export type CoordinatorDrivers = __Infer<typeof CoordinatorDrivers>;
+
+export const CoordinatorHouseholds = __t.object("CoordinatorHouseholds", {});
+export type CoordinatorHouseholds = __Infer<typeof CoordinatorHouseholds>;
+
+export const CoordinatorJobs = __t.object("CoordinatorJobs", {});
+export type CoordinatorJobs = __Infer<typeof CoordinatorJobs>;
+
+export const CoordinatorRoutes = __t.object("CoordinatorRoutes", {});
+export type CoordinatorRoutes = __Infer<typeof CoordinatorRoutes>;
+
 export const Driver = __t.object("Driver", {
   id: __t.string(),
   incidentId: __t.string(),
   name: __t.string(),
-  status: __t.string(),
+  freeAt: __t.timestamp(),
+  activeJobId: __t.option(__t.u64()),
 });
 export type Driver = __Infer<typeof Driver>;
+
+export const DriverJobs = __t.object("DriverJobs", {});
+export type DriverJobs = __Infer<typeof DriverJobs>;
 
 export const Household = __t.object("Household", {
   id: __t.string(),
   incidentId: __t.string(),
   label: __t.string(),
+  need: __t.string(),
   version: __t.u32(),
   runtimeLowerMin: __t.option(__t.u32()),
   runtimeUpperMin: __t.option(__t.u32()),
   lastObservedAt: __t.option(__t.timestamp()),
   lastEventId: __t.option(__t.string()),
+  activeJobId: __t.option(__t.u64()),
 });
 export type Household = __Infer<typeof Household>;
 
@@ -57,4 +91,78 @@ export const Incident = __t.object("Incident", {
   clockAt: __t.timestamp(),
 });
 export type Incident = __Infer<typeof Incident>;
+
+export const Invite = __t.object("Invite", {
+  code: __t.string(),
+  role: __t.string(),
+  incidentId: __t.string(),
+  subjectId: __t.string(),
+});
+export type Invite = __Infer<typeof Invite>;
+
+export const Job = __t.object("Job", {
+  id: __t.u64(),
+  requestId: __t.string(),
+  incidentId: __t.string(),
+  householdId: __t.string(),
+  routeId: __t.string(),
+  driverId: __t.string(),
+  assetId: __t.string(),
+  version: __t.u32(),
+  status: __t.string(),
+  etaAt: __t.timestamp(),
+  createdBy: __t.identity(),
+  createdAt: __t.timestamp(),
+});
+export type Job = __Infer<typeof Job>;
+
+export const Member = __t.object("Member", {
+  identity: __t.identity(),
+  role: __t.string(),
+  incidentId: __t.string(),
+  subjectId: __t.string(),
+});
+export type Member = __Infer<typeof Member>;
+
+export const MyIncident = __t.object("MyIncident", {});
+export type MyIncident = __Infer<typeof MyIncident>;
+
+export const MyRole = __t.object("MyRole", {});
+export type MyRole = __Infer<typeof MyRole>;
+
+export const Outbox = __t.object("Outbox", {
+  key: __t.string(),
+  incidentId: __t.string(),
+  jobId: __t.u64(),
+  jobVersion: __t.u32(),
+  recipient: __t.string(),
+  purpose: __t.string(),
+  body: __t.string(),
+  status: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type Outbox = __Infer<typeof Outbox>;
+
+export const Route = __t.object("Route", {
+  id: __t.string(),
+  incidentId: __t.string(),
+  householdId: __t.string(),
+  driverId: __t.string(),
+  assetId: __t.string(),
+  driverToAssetMin: __t.u32(),
+  pickupMin: __t.u32(),
+  assetToHomeMin: __t.u32(),
+  setupMin: __t.u32(),
+  confirmedDelayMin: __t.u32(),
+});
+export type Route = __Infer<typeof Route>;
+
+export const RouteReport = __t.object("RouteReport", {
+  reportId: __t.string(),
+  routeId: __t.string(),
+  delayMin: __t.u32(),
+  confirmedBy: __t.identity(),
+  confirmedAt: __t.timestamp(),
+});
+export type RouteReport = __Infer<typeof RouteReport>;
 
