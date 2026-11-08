@@ -34,14 +34,18 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import ClaimFollowupReducer from "./claim_followup_reducer";
 import ClaimInviteReducer from "./claim_invite_reducer";
 import ConfirmRouteReportReducer from "./confirm_route_report_reducer";
 import CreateInviteReducer from "./create_invite_reducer";
 import EnrollPreparednessReducer from "./enroll_preparedness_reducer";
 import IngestCheckinReducer from "./ingest_checkin_reducer";
+import OpenCheckinRoundReducer from "./open_checkin_round_reducer";
 import PostJobMessageReducer from "./post_job_message_reducer";
+import ReleaseJobReducer from "./release_job_reducer";
 import RequestAgentContactReducer from "./request_agent_contact_reducer";
 import ReserveReducer from "./reserve_reducer";
+import SetFollowupIntervalReducer from "./set_followup_interval_reducer";
 import SkipAgentContactReducer from "./skip_agent_contact_reducer";
 import UpdateJobReducer from "./update_job_reducer";
 
@@ -53,10 +57,13 @@ import BridgeOutboxRow from "./bridge_outbox_table";
 import CoordinatorAssetsRow from "./coordinator_assets_table";
 import CoordinatorCheckinsRow from "./coordinator_checkins_table";
 import CoordinatorDriversRow from "./coordinator_drivers_table";
+import CoordinatorFollowupAuditRow from "./coordinator_followup_audit_table";
+import CoordinatorFollowupsRow from "./coordinator_followups_table";
 import CoordinatorHouseholdsRow from "./coordinator_households_table";
 import CoordinatorJobsRow from "./coordinator_jobs_table";
 import CoordinatorProfilesRow from "./coordinator_profiles_table";
 import CoordinatorRegistryStatsRow from "./coordinator_registry_stats_table";
+import CoordinatorRoundsRow from "./coordinator_rounds_table";
 import CoordinatorRoutesRow from "./coordinator_routes_table";
 import DriverJobsRow from "./driver_jobs_table";
 import JobMessagesRow from "./job_messages_table";
@@ -106,6 +113,20 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, CoordinatorDriversRow),
+  coordinatorFollowupAudit: __table({
+    name: 'coordinator_followup_audit',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorFollowupAuditRow),
+  coordinatorFollowups: __table({
+    name: 'coordinator_followups',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorFollowupsRow),
   coordinatorHouseholds: __table({
     name: 'coordinator_households',
     indexes: [
@@ -134,6 +155,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, CoordinatorRegistryStatsRow),
+  coordinatorRounds: __table({
+    name: 'coordinator_rounds',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorRoundsRow),
   coordinatorRoutes: __table({
     name: 'coordinator_routes',
     indexes: [
@@ -201,14 +229,18 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("claim_followup", ClaimFollowupReducer),
   __reducerSchema("claim_invite", ClaimInviteReducer),
   __reducerSchema("confirm_route_report", ConfirmRouteReportReducer),
   __reducerSchema("create_invite", CreateInviteReducer),
   __reducerSchema("enroll_preparedness", EnrollPreparednessReducer),
   __reducerSchema("ingest_checkin", IngestCheckinReducer),
+  __reducerSchema("open_checkin_round", OpenCheckinRoundReducer),
   __reducerSchema("post_job_message", PostJobMessageReducer),
+  __reducerSchema("release_job", ReleaseJobReducer),
   __reducerSchema("request_agent_contact", RequestAgentContactReducer),
   __reducerSchema("reserve", ReserveReducer),
+  __reducerSchema("set_followup_interval", SetFollowupIntervalReducer),
   __reducerSchema("skip_agent_contact", SkipAgentContactReducer),
   __reducerSchema("update_job", UpdateJobReducer),
 );

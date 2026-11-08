@@ -57,6 +57,20 @@ export const Checkin = __t.object("Checkin", {
 });
 export type Checkin = __Infer<typeof Checkin>;
 
+export const CheckinRound = __t.object("CheckinRound", {
+  id: __t.u64(),
+  roundKey: __t.string(),
+  incidentId: __t.string(),
+  householdId: __t.string(),
+  status: __t.string(),
+  openedBy: __t.identity(),
+  openedAt: __t.timestamp(),
+  dueAt: __t.timestamp(),
+  answeredEventId: __t.option(__t.string()),
+  closedAt: __t.option(__t.timestamp()),
+});
+export type CheckinRound = __Infer<typeof CheckinRound>;
+
 export const Config = __t.object("Config", {
   id: __t.u32(),
   owner: __t.identity(),
@@ -72,6 +86,12 @@ export type CoordinatorCheckins = __Infer<typeof CoordinatorCheckins>;
 export const CoordinatorDrivers = __t.object("CoordinatorDrivers", {});
 export type CoordinatorDrivers = __Infer<typeof CoordinatorDrivers>;
 
+export const CoordinatorFollowupAudit = __t.object("CoordinatorFollowupAudit", {});
+export type CoordinatorFollowupAudit = __Infer<typeof CoordinatorFollowupAudit>;
+
+export const CoordinatorFollowups = __t.object("CoordinatorFollowups", {});
+export type CoordinatorFollowups = __Infer<typeof CoordinatorFollowups>;
+
 export const CoordinatorHouseholds = __t.object("CoordinatorHouseholds", {});
 export type CoordinatorHouseholds = __Infer<typeof CoordinatorHouseholds>;
 
@@ -83,6 +103,9 @@ export type CoordinatorProfiles = __Infer<typeof CoordinatorProfiles>;
 
 export const CoordinatorRegistryStats = __t.object("CoordinatorRegistryStats", {});
 export type CoordinatorRegistryStats = __Infer<typeof CoordinatorRegistryStats>;
+
+export const CoordinatorRounds = __t.object("CoordinatorRounds", {});
+export type CoordinatorRounds = __Infer<typeof CoordinatorRounds>;
 
 export const CoordinatorRoutes = __t.object("CoordinatorRoutes", {});
 export type CoordinatorRoutes = __Infer<typeof CoordinatorRoutes>;
@@ -98,6 +121,48 @@ export type Driver = __Infer<typeof Driver>;
 
 export const DriverJobs = __t.object("DriverJobs", {});
 export type DriverJobs = __Infer<typeof DriverJobs>;
+
+export const Followup = __t.object("Followup", {
+  id: __t.u64(),
+  roundId: __t.u64(),
+  incidentId: __t.string(),
+  householdId: __t.string(),
+  status: __t.string(),
+  owner: __t.identity(),
+  dueAt: __t.timestamp(),
+  escalationLevel: __t.u32(),
+  version: __t.u32(),
+  lastEventId: __t.option(__t.string()),
+  lastObservedAt: __t.option(__t.timestamp()),
+  runtimeLowerMin: __t.option(__t.u32()),
+  runtimeUpperMin: __t.option(__t.u32()),
+  createdAt: __t.timestamp(),
+});
+export type Followup = __Infer<typeof Followup>;
+
+export const FollowupAudit = __t.object("FollowupAudit", {
+  id: __t.u64(),
+  followupId: __t.u64(),
+  incidentId: __t.string(),
+  action: __t.string(),
+  actor: __t.option(__t.identity()),
+  owner: __t.identity(),
+  note: __t.string(),
+  at: __t.timestamp(),
+});
+export type FollowupAudit = __Infer<typeof FollowupAudit>;
+
+export const FollowupConfig = __t.object("FollowupConfig", {
+  id: __t.u32(),
+  intervalSec: __t.u32(),
+});
+export type FollowupConfig = __Infer<typeof FollowupConfig>;
+
+export const FollowupTimer = __t.object("FollowupTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type FollowupTimer = __Infer<typeof FollowupTimer>;
 
 export const Household = __t.object("Household", {
   id: __t.string(),
@@ -163,6 +228,14 @@ export type JobMessage = __Infer<typeof JobMessage>;
 
 export const JobMessages = __t.object("JobMessages", {});
 export type JobMessages = __Infer<typeof JobMessages>;
+
+export const JobRelease = __t.object("JobRelease", {
+  jobId: __t.u64(),
+  incidentId: __t.string(),
+  releasedBy: __t.identity(),
+  releasedAt: __t.timestamp(),
+});
+export type JobRelease = __Infer<typeof JobRelease>;
 
 export const Member = __t.object("Member", {
   identity: __t.identity(),
