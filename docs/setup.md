@@ -128,7 +128,7 @@ await conn.reducers.claimInvite({ code }); // binds this session's identity to t
 | Role | `subjectId` | Can call | Can read (views) |
 |---|---|---|---|
 | `coordinator` | `''` | `ingestCheckin`, `confirmRouteReport`, `reserve`, `openCheckinRound`, `claimFollowup`, `releaseJob` | `coordinator_*` and `job_messages` for its incident |
-| `driver` | driver ID | `postJobMessage`, `updateJob` (`arrived`) on its jobs | `driver_jobs`, `job_messages`: its own jobs only |
+| `driver` | driver ID | `postJobMessage`, `updateJob` (`arrived`) on its jobs | `driver_jobs`, `job_messages`: its own jobs only; `driver_stops`: address and backup device of its jobs until release (TL-20) |
 | `bridge` | `''` | `ingestCheckin` | `bridge_outbox` and `bridge_checkins` (receipts) for its incident |
 | `resident` | household ID | `postJobMessage`, `updateJob` (`delivered`) on its jobs; `enrollPreparedness`, `requestAgentContact`, `skipAgentContact`, `confirmSuggestedNeed` | `resident_jobs`, `job_messages`, `my_profile`, `my_agent_request`, `my_agent_decline`, `my_confirmed_need`: its own household only |
 

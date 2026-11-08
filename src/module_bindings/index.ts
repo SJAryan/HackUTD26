@@ -69,6 +69,7 @@ import CoordinatorRegistryStatsRow from "./coordinator_registry_stats_table";
 import CoordinatorRoundsRow from "./coordinator_rounds_table";
 import CoordinatorRoutesRow from "./coordinator_routes_table";
 import DriverJobsRow from "./driver_jobs_table";
+import DriverStopsRow from "./driver_stops_table";
 import JobMessagesRow from "./job_messages_table";
 import MyAgentDeclineRow from "./my_agent_decline_table";
 import MyAgentRequestRow from "./my_agent_request_table";
@@ -187,6 +188,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, DriverJobsRow),
+  driverStops: __table({
+    name: 'driver_stops',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, DriverStopsRow),
   jobMessages: __table({
     name: 'job_messages',
     indexes: [

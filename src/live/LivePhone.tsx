@@ -92,6 +92,7 @@ const NEXT: Record<'driver' | 'resident', { from: string; to: string; label: str
 export function LivePhone({ as }: { as: 'driver' | 'resident' }) {
   const [driverJobs] = useTable(tables.driverJobs);
   const [residentJobs] = useTable(tables.residentJobs);
+  const [stops] = useTable(tables.driverStops);
   const update = useReducer(reducers.updateJob);
   const [status, setStatus] = useState<{ kind: 'idle' | 'sending' | 'error'; text?: string }>({ kind: 'idle' });
 
@@ -99,6 +100,8 @@ export function LivePhone({ as }: { as: 'driver' | 'resident' }) {
   const job = [...jobs].sort((a, b) => Number(b.id - a.id))[0];
   const step = NEXT[as];
   const driver = job ? titleCase(job.driverId) : '';
+  // TL-20: A's driver_stops has a row only while this driver's job is active (until release).
+  const stop = as === 'driver' && job ? stops.find((s) => s.jobId === job.id) : undefined;
 
   const advance = () => {
     if (!job || status.kind === 'sending') return;
@@ -142,6 +145,16 @@ export function LivePhone({ as }: { as: 'driver' | 'resident' }) {
                     ? 'The resident confirmed delivery. Your next job appears here as soon as a coordinator assigns it.'
                     : `Delivered and confirmed. Job ${String(job.id)}.`}
               </p>
+              {stop && job.status !== 'delivered' && (
+                stop.onFile ? (
+                  <dl className="stop">
+                    <div><dt><Icon name="route" size={14} /> Address</dt><dd>{stop.address}</dd></div>
+                    <div><dt><Icon name="battery" size={14} /> Equipment</dt><dd>{stop.backupDevice}</dd></div>
+                  </dl>
+                ) : (
+                  <p className="stop stop-missing"><Icon name="phone" size={14} /> No address on file; call the coordinator.</p>
+                )
+              )}
               {job.status === step.from && (
                 <button className={`btn btn-block ${as === 'driver' ? 'btn-primary' : 'btn-accept'}`} onClick={advance} disabled={status.kind === 'sending'}>
                   {status.kind === 'sending' ? 'Saving…' : step.label}

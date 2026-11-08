@@ -430,6 +430,12 @@ form .fixture-note { padding: 0; }
 .live-notice > svg { color: var(--green-solid); }
 .live-job { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--rule); }
 .live-job h2 { font-size: 18px; }
+/* TL-20: where the driver is going */
+.stop { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--ground); font-size: 14px; }
+.stop > div { display: flex; flex-direction: column; gap: 2px; }
+.stop dt { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--mute); }
+.stop dd { color: var(--ink); font-weight: 600; }
+.stop-missing { flex-direction: row; align-items: center; color: var(--ink-2); }
 .thread-event { display: flex; align-items: center; gap: 6px; align-self: center; font-size: 12.5px; color: var(--green); background: var(--green-wash); border-radius: 999px; padding: 3px 10px; }
 .bubble.sending { opacity: 0.6; }
 .bubble.failed { background: var(--amber-wash); color: var(--ink); border: 1px solid var(--amber-rule); }
