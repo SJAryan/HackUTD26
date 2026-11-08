@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ApiError } from "@photon-ai/api";
-import { MAX_RETRIES, RETRY_FAILED_MS, RETRY_WINDOW_MS, classifySendError, processOutbox, type OutboxRow, type SendResult, type SentLog, type Space } from "./outbox.ts";
+import { classifySendError, processOutbox, type OutboxRow, type SendResult, type SentLog, type Space } from "./outbox.ts";
+
+const SECOND = 1_000;
 
 // Synthetic rows in A's outbox shape (key = job:<id>:v<version>:<recipient>:<purpose>).
 const eta = (jobId: number, version = 1, household = "H17"): OutboxRow => ({
@@ -63,27 +65,50 @@ test("a household that is not enrolled is not sent", async () => {
   assert.equal(w.sent[eta(2, 1, "H22").key], undefined);
 });
 
-test("failed send is retried after the backoff with the same key, then never again once accepted", async () => {
+test("accepted is never resent", async () => {
+  const w = world(["accepted"]);
+  const row = eta(1);
+  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
+  w.tick(60 * SECOND);
+  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
+  assert.equal(w.sends.length, 1);
+  assert.deepEqual(w.sent[row.key], { status: "accepted", at: "2026-11-08T08:00:00.000Z", attempts: 1 });
+});
+
+test("failed send, then delivery with the row still in the view: no resend at 20s or 60s", async () => {
   const w = world(["failed", "accepted"]);
   const row = eta(1);
   await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
-  assert.equal(w.sent[row.key].status, "failed");
-  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted); // inside the backoff: no resend
+  assert.equal(w.sent[row.key].status, "needs_reconciliation");
+  // The job is delivered, but the unfiltered view still holds the v1 ETA row.
+  w.tick(20 * SECOND);
+  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
+  w.tick(40 * SECOND);
+  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
   assert.equal(w.sends.length, 1);
-  w.tick(RETRY_FAILED_MS);
+  assert.equal(w.sent[row.key].status, "needs_reconciliation");
+  const notes = w.log.filter((l) => l.includes("needs reconciliation"));
+  assert.equal(notes.length, 1);
+  assert.match(notes[0], /failed; not retrying/);
+  assert.ok(!/\d{7,}/.test(w.log.join("\n")));
+});
+
+test("a legacy failed record from an older build is never retried", async () => {
+  const w = world();
+  const row = eta(1);
+  w.sent[row.key] = { status: "failed", at: "2026-11-08T07:59:00.000Z", attempts: 1 };
   await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
-  assert.deepEqual(w.sent[row.key], { status: "accepted", at: "2026-11-08T08:00:15.000Z", attempts: 2, firstAt: "2026-11-08T08:00:00.000Z" });
-  w.tick(RETRY_FAILED_MS);
+  w.tick(60 * SECOND);
   await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
-  assert.equal(w.sends.length, 2);
-  assert.ok(w.sends.every((s) => s.key === row.key));
+  assert.equal(w.sends.length, 0);
+  assert.equal(w.sent[row.key].status, "needs_reconciliation");
 });
 
 test("ambiguous send is not resent and is flagged for reconciliation", async () => {
   const w = world(["ambiguous"]);
   const row = eta(1);
   await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
-  w.tick(10 * RETRY_FAILED_MS);
+  w.tick(150 * SECOND);
   await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
   await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
   assert.equal(w.sends.length, 1);
@@ -102,29 +127,27 @@ test("no thread yet: waits without sending or recording, then sends once the sen
   assert.equal(w.sends.length, 1);
 });
 
-test("failed ETA whose row leaves the view (job delivered) is obsolete and never retried", async () => {
-  const w = world(["failed"]);
+test("a legacy failed record whose row left the view is obsolete and never sent", async () => {
+  const w = world();
   const row = eta(1);
-  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
-  assert.equal(w.sent[row.key].status, "failed");
-  w.tick(RETRY_FAILED_MS);
-  await processOutbox([], "H17", space, w.sent, w.deps, w.noted); // job moved on: A's view drops the row
+  w.sent[row.key] = { status: "failed", at: "2026-11-08T07:59:00.000Z", attempts: 1 };
+  await processOutbox([], "H17", space, w.sent, w.deps, w.noted); // job moved on: the view drops the row
   assert.equal(w.sent[row.key].status, "obsolete");
-  w.tick(RETRY_FAILED_MS);
+  w.tick(60 * SECOND);
   await processOutbox([row], "H17", space, w.sent, w.deps, w.noted); // even if it showed up again
-  assert.equal(w.sends.length, 1);
+  assert.equal(w.sends.length, 0);
   assert.ok(w.log.some((l) => l.includes(`${row.key} obsolete: no longer in the view`)));
 });
 
-test("v1 failed and v2 present: only v2 is sent, v1 is permanently obsolete", async () => {
+test("v1 failed and v2 present: v1 is not resent, only v2 is sent", async () => {
   const w = world(["failed", "accepted"]);
   await processOutbox([eta(1, 1)], "H17", space, w.sent, w.deps, w.noted);
-  w.tick(RETRY_FAILED_MS);
+  w.tick(20 * SECOND);
   await processOutbox([eta(1, 1), eta(1, 2)], "H17", space, w.sent, w.deps, w.noted);
-  w.tick(RETRY_FAILED_MS);
+  w.tick(20 * SECOND);
   await processOutbox([eta(1, 1), eta(1, 2)], "H17", space, w.sent, w.deps, w.noted);
   assert.deepEqual(w.sends.map((s) => s.key), [eta(1, 1).key, eta(1, 2).key]);
-  assert.equal(w.sent[eta(1, 1).key].status, "obsolete");
+  assert.equal(w.sent[eta(1, 1).key].status, "needs_reconciliation");
   assert.equal(w.sent[eta(1, 2).key].status, "accepted");
 });
 
@@ -133,30 +156,6 @@ test("an older version is never sent when a newer one is in the same snapshot", 
   await processOutbox([eta(1, 2), eta(1, 1)], "H17", space, w.sent, w.deps, w.noted);
   assert.deepEqual(w.sends.map((s) => s.key), [eta(1, 2).key]);
   assert.equal(w.sent[eta(1, 1).key].status, "obsolete");
-});
-
-test("a failed ETA past 2 minutes from its first attempt expires instead of sending", async () => {
-  const w = world(["failed"]);
-  const row = eta(1);
-  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
-  w.tick(RETRY_WINDOW_MS + 1);
-  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
-  w.tick(RETRY_FAILED_MS);
-  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
-  assert.equal(w.sends.length, 1);
-  assert.equal(w.sent[row.key].status, "expired");
-  assert.equal(w.log.filter((l) => l.includes("expired") && l.includes("needs reconciliation")).length, 1);
-});
-
-test("a failed ETA is retried at most 3 times, then expires", async () => {
-  const w = world(["failed", "failed", "failed", "failed", "accepted"]);
-  const row = eta(1);
-  for (let i = 0; i < 8; i++) {
-    await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
-    w.tick(RETRY_FAILED_MS);
-  }
-  assert.equal(w.sends.length, 1 + MAX_RETRIES);
-  assert.equal(w.sent[row.key].status, "expired");
 });
 
 test("send errors: definite API refusals are failed; timeouts and gateway errors are ambiguous", () => {
