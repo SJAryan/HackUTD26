@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { POLL_ANSWERS, fmt } from '../demo/fixture';
-import { answerCall, answerPoll, pollOpen, postMessage, updateJob, useDemo } from '../demo/store';
+import { answerCall, answerPoll, pollOpen, postMessage, requestAgentContact, skipAgentContact, updateJob, useDemo, type Result } from '../demo/store';
 import { Icon } from '../ui/icons';
 
 // Simulated resident phone. Live iMessage polls and calls come from Photon (B).
@@ -73,7 +73,7 @@ export function ResidentPhone() {
               I received the battery
             </button>
           )}
-          {s.job?.status === 'received' && <p className="thread-empty">Received. Thank you for confirming.</p>}
+          {s.job?.status === 'received' && <AgentOffer />}
         </div>
 
         <form
@@ -89,5 +89,56 @@ export function ResidentPhone() {
         </form>
       </div>
     </div>
+  );
+}
+
+// TL-09. Offered only after delivery is confirmed, so help never depends on the answer.
+// A prototype lead: no real outreach, no quote, no implied coverage.
+function AgentOffer() {
+  const s = useDemo();
+  const [agree, setAgree] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [result, setResult] = useState<Result | null>(null);
+  const consentId = useRef(`consent-${Math.random().toString(36).slice(2, 8)}`);
+  const req = s.agentRequest;
+
+  if (req) {
+    return (
+      <section className="offer done" aria-live="polite">
+        <p className="offer-title"><Icon name="checkCircle" size={16} /> Request saved, {req.leadId}</p>
+        <p>A State Farm agent may contact you about coverage at {s.registration?.phone}.</p>
+        <p className="offer-fine">Demo receipt. No one will actually call, and this is not a quote or a policy.</p>
+        {result?.kind === 'duplicate' && <p className="offer-fine">{result.text}</p>}
+      </section>
+    );
+  }
+  if (s.agentSkipped) {
+    return <p className="thread-empty">Received. Thank you for confirming. Nothing else was saved.</p>;
+  }
+
+  const send = () => {
+    if (!agree || pending) return;
+    setPending(true);
+    // The receipt appears only once the request comes back committed or duplicate.
+    setTimeout(() => {
+      setResult(requestAgentContact(consentId.current));
+      setPending(false);
+    }, 400);
+  };
+
+  return (
+    <section className="offer" aria-label="Optional agent contact">
+      <p className="offer-title">Battery received. You're all set.</p>
+      <p>Optional: would you like a State Farm agent to contact you about coverage? Your help today did not depend on this, and nothing changes if you skip.</p>
+      <label className="check">
+        <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+        <span>I agree that a State Farm agent may contact me at {s.registration?.phone} about coverage.</span>
+      </label>
+      {result && result.kind !== 'committed' && <p className="offer-fine">{result.text}</p>}
+      <div className="offer-actions">
+        <button className="btn btn-quiet" onClick={skipAgentContact} disabled={pending}>Skip</button>
+        <button className="btn btn-primary" onClick={send} disabled={!agree || pending}>{pending ? 'Saving…' : 'Ask an agent'}</button>
+      </div>
+    </section>
   );
 }

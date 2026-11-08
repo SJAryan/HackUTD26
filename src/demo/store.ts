@@ -6,7 +6,9 @@ import { DELAY, DEMO_ID, H17_ROUTES, OTHERS, OUTAGE_AT, evaluate, fmt, type Hous
 
 export type Result = { kind: 'committed' | 'duplicate' | 'conflict'; text: string };
 export type Msg = { id: string; from: 'system' | 'resident' | 'driver'; text: string; at: number; channel: 'iMessage' | 'Call' | 'Chat' };
-export type Event = { at: number; kind: 'registry' | 'outreach' | 'reply' | 'report' | 'decision' | 'dispatch' | 'delivery'; text: string; who: string };
+export type Event = { at: number; kind: 'registry' | 'outreach' | 'reply' | 'report' | 'decision' | 'dispatch' | 'delivery' | 'consent'; text: string; who: string };
+// TL-09: one private, consented request for a State Farm agent to follow up. A prototype lead, not a sale.
+export type AgentRequest = { consentId: string; leadId: string; at: number; contact: string };
 export type JobStatus = 'reserved' | 'en_route' | 'arrived' | 'received';
 export type Job = { jobId: string; requestId: string; routeId: string; assetId: string; driverId: string; version: number; status: JobStatus; eta: number };
 export type Registration = { name: string; age: string; phone: string; address: string; need: Need; equipment: string; contact: string };
@@ -27,6 +29,8 @@ export type DemoState = {
   messages: Msg[];
   events: Event[];
   last: Result | null;
+  agentRequest: AgentRequest | null;
+  agentSkipped: boolean;
 };
 
 const KEY = 'before-zero-demo-v1';
@@ -47,6 +51,8 @@ export const INITIAL: DemoState = {
   messages: [],
   events: [],
   last: null,
+  agentRequest: null,
+  agentSkipped: false,
 };
 
 function load(): DemoState {
@@ -274,6 +280,30 @@ export function postMessage(from: 'resident' | 'driver', text: string) {
   set({ ...state, messages: [...state.messages, { id: id(), from, channel: 'Chat', at: state.clock, text: t }] });
 }
 
+// Contract: requestAgentContact(consentId). Offered only after delivery is confirmed, so it can
+// never change who gets help or how fast. Retrying the same consentId saves nothing new.
+export function requestAgentContact(consentId: string): Result {
+  const r = state.agentRequest;
+  if (r) return r.consentId === consentId
+    ? { kind: 'duplicate', text: `Already saved as ${r.leadId}. Nothing new was recorded.` }
+    : { kind: 'conflict', text: `This household already has request ${r.leadId}.` };
+  if (state.job?.status !== 'received') return { kind: 'conflict', text: 'Agent contact is offered only after help is delivered.' };
+  const reg = state.registration!;
+  const req: AgentRequest = { consentId, leadId: 'L-1', at: state.clock, contact: reg.contact };
+  set({
+    ...state,
+    agentRequest: req,
+    agentSkipped: false,
+    events: [...state.events, ev({ kind: 'consent', who: DEMO_ID, text: `Asked a State Farm agent to follow up about coverage. Consent saved as ${req.leadId}.` })],
+  });
+  return { kind: 'committed', text: `Saved as ${req.leadId}.` };
+}
+
+export function skipAgentContact() {
+  if (state.agentRequest || state.agentSkipped) return;
+  set({ ...state, agentSkipped: true });
+}
+
 export function clearResult() {
   set({ ...state, last: null });
 }
@@ -303,6 +333,9 @@ export function h17Row(s: DemoState): Household | null {
   if (!c || !c.best) return { ...base, lane: 'unknown', report: `“${s.answer}”`, margin: null, best: 'Follow-up sent', owner: 'Maya', dueAt: (s.answeredAt ?? 0) + 6 };
   return { ...base, lane: c.lane, report: `“${s.answer}”`, margin: c.best.lo, best: `${c.best.assetId}, ${c.best.driverId}, ${c.best.routeId}` };
 }
+
+// Opt-ins are counted apart from registrations. Only H17 can opt in during the fixture demo.
+export const agentOptIns = (s: DemoState) => (s.agentRequest ? 1 : 0);
 
 export function householdRows(s: DemoState): Household[] {
   const h17 = h17Row(s);
