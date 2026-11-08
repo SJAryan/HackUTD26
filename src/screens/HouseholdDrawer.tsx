@@ -112,7 +112,8 @@ export function HouseholdDrawer({ row, onClose }: { row: Household; onClose: () 
       </header>
 
       <dl className="facts">
-        <div><dt>Need</dt><dd>{NEED_LABEL[reg.need]}</dd></div>
+        <div><dt>Need</dt><dd>{NEED_LABEL[reg.need]}{reg.confirmed?.some((c) => c.dispatchNeed) ? ', self-confirmed via preparedness profile' : ''}</dd></div>
+        {reg.confirmed?.some((c) => c.id === 'step_free_access') && <div><dt>Access</dt><dd>Step-free access</dd></div>}
         <div><dt>Equipment</dt><dd>{reg.equipment}</dd></div>
         <div><dt>Contact</dt><dd>{reg.contact}</dd></div>
         {s.job?.status === 'received' && (

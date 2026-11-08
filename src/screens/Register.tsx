@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { DEMO_ID, NEED_LABEL, type Need } from '../demo/fixture';
 import { register, useDemo, type Registration } from '../demo/store';
 import { Icon } from '../ui/icons';
+import { PolicyCheck } from './PolicyCheck';
 
 // Only needs with a working check-in and dispatch flow can be chosen.
 const READY: Need[] = ['oxygen'];
@@ -38,6 +39,7 @@ export function Register({ go }: { go: (route: string) => void }) {
           <p>
             If the power goes out at {s.registration.address}, Before Zero texts you first, then calls. Your answer tells the response team how much time you have.
           </p>
+          {s.registration.confirmed?.length ? <p className="sub">Confirmed from your policy: {s.registration.confirmed.map((c) => (c.dispatchNeed ? 'powered equipment' : 'step-free access')).join(' and ')}.</p> : null}
           <p className="sub">Household {DEMO_ID}. Synthetic demo resident.</p>
           <div className="row-actions">
             <button className="btn btn-primary" onClick={() => go('board')}>Open the coordinator board</button>
@@ -64,6 +66,8 @@ export function Register({ go }: { go: (route: string) => void }) {
 
       <form className="site-card form" onSubmit={submit}>
         <p className="fixture-note">Prefilled with a synthetic resident for the demo.</p>
+        {/* A confirmed equipment need selects home oxygen, the only need that runs end to end. */}
+        <PolicyCheck householdId={DEMO_ID} onChange={(kept) => setF((x) => ({ ...x, confirmed: kept, ...(kept.some((k) => k.dispatchNeed) ? { need: 'oxygen' as Need } : {}) }))} />
         <div className="field-row">
           <label className="field">
             <span>Full name</span>

@@ -7,6 +7,8 @@ import { useReducer, useTable } from 'spacetimedb/react';
 import { reducers, tables } from '../module_bindings';
 import { Icon } from '../ui/icons';
 import { errorText, hhmm, ms, newId } from './model';
+import { useMyRole } from './RoleGate';
+import { PolicyCheck } from '../screens/PolicyCheck';
 
 type Status = { kind: 'idle' | 'sending' | 'error'; text?: string };
 
@@ -38,6 +40,7 @@ export function LiveRegister({ go }: { go: (route: string) => void }) {
   // Stable until the profile lands, so a retried submit is a no-op on the server.
   const enrollmentId = useRef(newId());
   const profile = profiles[0];
+  const { role } = useMyRole();
 
   if (profile) {
     return (
@@ -85,6 +88,8 @@ export function LiveRegister({ go }: { go: (route: string) => void }) {
 
       <form className="site-card form" onSubmit={submit}>
         <p className="fixture-note">Prefilled with a synthetic resident. Your invite links this browser to its household.</p>
+        {/* Live mode saves only the need chosen below; A's enrollPreparedness has no field for the confirmation yet. */}
+        {role?.subjectId && <PolicyCheck householdId={role.subjectId} onChange={(kept) => kept.some((k) => k.dispatchNeed) && setF((x) => ({ ...x, medicalNeed: 'home_oxygen' }))} />}
         <fieldset className="field">
           <legend>What depends on power</legend>
           <div className="choices">

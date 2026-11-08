@@ -443,3 +443,14 @@ form .fixture-note { padding: 0; }
 .record-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .btn-sm { height: 30px; padding: 0 10px; font-size: 12.5px; }
 .live-offer { padding: 12px 14px 0; }
+
+/* TL-15: confirm, correct or skip a suggestion from synthetic policy data */
+.policy { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px dashed var(--rule); border-radius: var(--radius); background: var(--ground); font-size: 14px; }
+.policy-label { font-size: 12px; font-weight: 600; color: var(--mute); }
+.policy-title { font-weight: 600; color: var(--ink); }
+.policy-item { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--white); }
+.policy-item.confirm { border-color: #bfe3cc; background: var(--green-wash); }
+.policy-item > .link-btn { align-self: flex-start; }
+.policy-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.policy-result { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--ink-2); }
+.policy-fine { font-size: 12.5px; color: var(--mute); }

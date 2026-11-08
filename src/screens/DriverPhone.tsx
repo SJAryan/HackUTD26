@@ -49,6 +49,7 @@ export function DriverPhone() {
               <dl className="facts">
                 <div><dt>Job</dt><dd>{job.jobId}</dd></div>
                 <div><dt>Address</dt><dd>{s.registration?.address}</dd></div>
+                {s.registration?.confirmed?.some((c) => c.id === 'step_free_access') && <div><dt>Access</dt><dd>Step-free access</dd></div>}
                 <div><dt>Carry</dt><dd>{job.assetId}</dd></div>
                 <div><dt>Route</dt><dd>{job.routeId}{job.routeId !== DELAY.routeId && s.delayConfirmed ? `, avoids ${DELAY.routeId}` : ''}</dd></div>
                 <div><dt>Arrive by</dt><dd className="num">{fmt(job.eta)}</dd></div>
