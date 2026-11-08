@@ -67,12 +67,19 @@ reducer makes a repeated `eventId` a silent no-op, so a server-side duplicate al
 
 **ETA texts.** The bridge subscribes to `bridge_outbox`. For each `eta` row addressed to
 `household:<BRIDGE_SENDER_HOUSEHOLD>`, it sends `body` into the sender's own thread with
-`idempotency-key` = the row's `key`. It sends nothing for other recipients and logs
+`idempotency-key` = the row's send key. It sends nothing for other recipients and logs
 `no channel for driver:ana (assignment)` instead. Until the sender has texted the line, there is no
 thread, so it logs and waits instead of starting a conversation.
 
+**Send keys are unique per database instance.** The send key is `<key>@<createdAt in µs>`, for
+example `job:1:v1:household:H17:eta@1794124800000000`. Job IDs restart at 1 after
+`npm run stdb:reset:local`, so the bare `key` repeats across resets. Without the timestamp, Photon
+would match the earlier run's idempotency key and report `accepted` without sending. With it, a reset
+database sends fresh ETAs. Repeated polls of the same row still use the same send key and are never
+resent. Log lines show only the bare `key`.
+
 Outbox rows stay `pending` (no reducer marks them sent yet), so `.bridge-state.json` (gitignored)
-records each key as one of:
+records each send key as one of:
 
 | Status | Meaning | Next |
 |---|---|---|

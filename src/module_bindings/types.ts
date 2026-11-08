@@ -77,11 +77,33 @@ export const Config = __t.object("Config", {
 });
 export type Config = __Infer<typeof Config>;
 
+export const ConfirmedNeed = __t.object("ConfirmedNeed", {
+  householdId: __t.string(),
+  confirmationId: __t.string(),
+  incidentId: __t.string(),
+  needId: __t.string(),
+  dispatchNeed: __t.option(__t.string()),
+  confirmedAt: __t.timestamp(),
+});
+export type ConfirmedNeed = __Infer<typeof ConfirmedNeed>;
+
+export const ConfirmedNeedRow = __t.object("ConfirmedNeedRow", {
+  householdId: __t.string(),
+  needId: __t.string(),
+  dispatchNeed: __t.option(__t.string()),
+  label: __t.string(),
+  confirmedAt: __t.timestamp(),
+});
+export type ConfirmedNeedRow = __Infer<typeof ConfirmedNeedRow>;
+
 export const CoordinatorAssets = __t.object("CoordinatorAssets", {});
 export type CoordinatorAssets = __Infer<typeof CoordinatorAssets>;
 
 export const CoordinatorCheckins = __t.object("CoordinatorCheckins", {});
 export type CoordinatorCheckins = __Infer<typeof CoordinatorCheckins>;
+
+export const CoordinatorConfirmedNeeds = __t.object("CoordinatorConfirmedNeeds", {});
+export type CoordinatorConfirmedNeeds = __Infer<typeof CoordinatorConfirmedNeeds>;
 
 export const CoordinatorDrivers = __t.object("CoordinatorDrivers", {});
 export type CoordinatorDrivers = __Infer<typeof CoordinatorDrivers>;
@@ -250,6 +272,9 @@ export type MyAgentDecline = __Infer<typeof MyAgentDecline>;
 
 export const MyAgentRequest = __t.object("MyAgentRequest", {});
 export type MyAgentRequest = __Infer<typeof MyAgentRequest>;
+
+export const MyConfirmedNeed = __t.object("MyConfirmedNeed", {});
+export type MyConfirmedNeed = __Infer<typeof MyConfirmedNeed>;
 
 export const MyIncident = __t.object("MyIncident", {});
 export type MyIncident = __Infer<typeof MyIncident>;
