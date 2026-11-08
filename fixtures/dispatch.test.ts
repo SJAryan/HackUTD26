@@ -69,6 +69,22 @@ test('silent household: overdue round without a reply; a reply clears it', () =>
   assert.equal(evaluateOptions(h22, tornado.options, now + 5 * MIN).lane, 'silent');
   const replied = { ...h22, round: { ...h22.round!, lastReplyAt: now + 3 * MIN } };
   assert.equal(evaluateOptions(replied, tornado.options, now + 5 * MIN).lane, 'unknown');
+  assert.equal(evaluateOptions(replied, tornado.options, now + 5 * MIN).silent, false);
+});
+
+test('silent status survives an Act now lane', () => {
+  const late = now + 5 * MIN;
+  // Overdue, unanswered, with a margin under +15.
+  const urgent = { ...h22, evidence: h17.evidence };
+  const low = evaluateOptions(urgent, withDetour, late);
+  assert.equal(low.lane, 'act_now');
+  assert.equal(low.silent, true);
+  // Overdue, unanswered, with no compatible resource.
+  const none = evaluateOptions({ ...h22, need: 'generator' }, tornado.options, late);
+  assert.equal(none.lane, 'act_now');
+  assert.equal(none.silent, true);
+  // An answered household under the same urgency is not silent.
+  assert.equal(evaluateOptions(h17, withDetour, late).silent, false);
 });
 
 test('freeze incident runs through the same rules', () => {
@@ -84,6 +100,7 @@ test('freeze incident runs through the same rules', () => {
   assert.deepEqual([f09.best?.marginLoMin, f09.best?.marginHiMin], [92, undefined]);
   assert.equal(f09.lane, 'watch');
   assert.equal(f14.lane, 'silent');
+  assert.deepEqual([f03.silent, f09.silent, f14.silent], [false, false, true]);
 });
 
 test('fixture IDs are distinct across incidents', () => {

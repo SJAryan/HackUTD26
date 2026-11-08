@@ -44,6 +44,8 @@ export interface CaseResult {
   householdId: string;
   lane: Lane;
   reason: string;
+  // Contact status, independent of dispatch urgency: an Act now case can also be silent.
+  silent: boolean;
   best?: OptionResult;
   options: OptionResult[]; // compatible options, best first
 }
@@ -84,7 +86,10 @@ export function evaluateOptions(
       known ? b.marginLoMin! - a.marginLoMin! || a.readyAt - b.readyAt : a.readyAt - b.readyAt
     );
   const best = results[0];
-  const base = { householdId: household.householdId, best, options: results };
+  const r = household.round;
+  const silent =
+    !!r && now >= r.dueAt && !(r.lastReplyAt !== undefined && r.lastReplyAt >= r.openedAt);
+  const base = { householdId: household.householdId, silent, best, options: results };
 
   if (!best) {
     return { ...base, lane: 'act_now', reason: `no compatible ${household.need} available` };
@@ -96,8 +101,7 @@ export function evaluateOptions(
         : `best ${best.routeId} margin +${best.marginLoMin} min, under +${WATCH_MARGIN_MIN}`;
     return { ...base, lane: 'act_now', reason };
   }
-  const r = household.round;
-  if (r && now >= r.dueAt && !(r.lastReplyAt !== undefined && r.lastReplyAt >= r.openedAt)) {
+  if (silent) {
     return { ...base, lane: 'silent', reason: 'check-in round overdue without a reply' };
   }
   if (!known) {
