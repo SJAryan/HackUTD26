@@ -1,0 +1,11 @@
+{
+  "_source": "SYNTHETIC replay modeled on a live Photon Beta capture. Replaying it is a replay, not a live integration.",
+  "event": {
+    "eventId": "synthetic-h17-tornado-001",
+    "incidentId": "tornado-1",
+    "householdBinding": "H17",
+    "observedAt": "2026-11-08T08:00:00.000Z",
+    "text": "Power's out after the tornado. The battery display on my oxygen concentrator says about 30 to 60 minutes left.",
+    "extracted": null
+  }
+}

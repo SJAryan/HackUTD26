@@ -1,0 +1,58 @@
+# Photon bridge (member B)
+
+TL-02 proves one real iMessage round trip on the team test line and captures one
+sanitized check-in event for A (`ingestCheckin`) and D (UI example).
+
+## Setup (once)
+
+1. In the [Photon Beta dashboard](https://app.beta.photon.codes), copy the Project ID
+   (`pho_prj_...`) and create an API key with `project:read` and `project:write`.
+2. Open **iMessage**, add the consenting teammate's send-from identity, then
+   **Assign a number from the shared pool**. That number is `PHOTON_AGENT_HANDLE`.
+3. `cp .env.example .env` and fill it in. `.env` is gitignored; never commit it.
+4. `npm install` (Node 24+).
+
+## 1. Live round trip (official first-reply guide)
+
+```sh
+npm run ping
+```
+
+After `Ready`, the teammate starts a **new direct iMessage** (not SMS) to the
+assigned number and sends exactly `ping` within 2 minutes.
+
+Pass: the phone receives `Hello from your Photon agent!` in the same thread.
+`Reply accepted` in the terminal only means Photon accepted the send.
+
+## 2. Capture the H17 check-in
+
+```sh
+npm run capture -- H17 tornado-1 captures/h17-checkin.json
+```
+
+After `Ready`, the teammate sends in the same thread:
+
+> My backup shows 30–60 minutes left. Can the driver reach the side entrance?
+
+Pass: the file is written, contains neither real handle in any format, and
+`event.eventId` is the Photon message ID. It refuses to overwrite an existing file
+and refuses to write if either identity's digits survive sanitizing. `captures/` is
+gitignored: raw captures stay on the capturing laptop and are never committed.
+`extracted` stays `null` until TL-08. `tornado-1` is A's seeded incident ID.
+
+The committed `fixtures/h17-checkin.json` is a **synthetic replay** modeled on a live
+capture, holding only the `event` that A (`ingestCheckin`) and D need. Replaying it
+is a replay, not a live integration.
+
+## Checks
+
+```sh
+npm test
+```
+
+## Evidence to post on TL-02
+
+- Channel: iMessage, Photon Beta shared line; connection: SDK polling (`listMessages`)
+- Date/time, pass/fail, any `Photon API error <status> (request <id>)` lines
+- Phone screenshot with numbers redacted
+- Whether the event file is a live capture (it says so in `_source`); a replay is never a live integration
