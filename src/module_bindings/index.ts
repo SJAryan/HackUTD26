@@ -45,6 +45,7 @@ import UpdateJobReducer from "./update_job_reducer";
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import BridgeCheckinsRow from "./bridge_checkins_table";
 import BridgeOutboxRow from "./bridge_outbox_table";
 import CoordinatorAssetsRow from "./coordinator_assets_table";
 import CoordinatorCheckinsRow from "./coordinator_checkins_table";
@@ -62,6 +63,13 @@ import ResidentJobsRow from "./resident_jobs_table";
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  bridgeCheckins: __table({
+    name: 'bridge_checkins',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, BridgeCheckinsRow),
   bridgeOutbox: __table({
     name: 'bridge_outbox',
     indexes: [

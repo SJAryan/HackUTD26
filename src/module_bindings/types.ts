@@ -19,6 +19,9 @@ export const Asset = __t.object("Asset", {
 });
 export type Asset = __Infer<typeof Asset>;
 
+export const BridgeCheckins = __t.object("BridgeCheckins", {});
+export type BridgeCheckins = __Infer<typeof BridgeCheckins>;
+
 export const BridgeOutbox = __t.object("BridgeOutbox", {});
 export type BridgeOutbox = __Infer<typeof BridgeOutbox>;
 

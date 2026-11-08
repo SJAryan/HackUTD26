@@ -596,6 +596,17 @@ export const driverJobs = spacetimedb.view(
   }
 );
 
+// Check-in receipts for B's bridge: the check-ins recorded for its incident, so the bridge
+// can confirm an ingestCheckin landed (and with which runtime) without reading households.
+export const bridgeCheckins = spacetimedb.view(
+  { name: 'bridge_checkins', public: true },
+  t.array(checkin.rowType),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    return me?.role === 'bridge' ? [...ctx.db.checkin.incidentId.filter(me.incidentId)] : [];
+  }
+);
+
 // A resident sees only their own household's jobs.
 export const residentJobs = spacetimedb.view(
   { name: 'resident_jobs', public: true },
