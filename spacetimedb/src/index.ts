@@ -179,9 +179,54 @@ const jobMessage = table(
   }
 );
 
+// TL-09: free preparedness profile, one per household, created before the incident.
+// Synthetic details only in the demo. Dispatch never reads this table.
+const profile = table(
+  { name: 'profile' },
+  {
+    householdId: t.string().primaryKey(),
+    enrollmentId: t.string().unique(), // stable request ID; a retry is a no-op
+    incidentId: t.string().index('btree'),
+    identity: t.identity(), // the resident session that enrolled
+    medicalNeed: t.string(), // 'home_oxygen' | 'dialysis' | 'no_heat'
+    backupDevice: t.string(), // e.g. 'oxygen concentrator battery'
+    address: t.string(),
+    preferredContact: t.string(), // 'imessage' | 'phone_call'
+    enrolledAt: t.timestamp(),
+  }
+);
+
+// TL-09: a consented request for a State Farm agent to follow up about coverage.
+// A prototype lead, not a sale. One per household; dispatch never reads this table.
+const agentContact = table(
+  { name: 'agent_contact' },
+  {
+    id: t.u64().primaryKey().autoInc(), // shown to the resident as lead L-<id>
+    consentId: t.string().unique(), // stable per consent click; a retry is a no-op
+    householdId: t.string().unique(),
+    incidentId: t.string().index('btree'),
+    identity: t.identity(),
+    jobId: t.u64(), // the delivered job the offer followed
+    preferredContact: t.string(), // copied from the profile at consent time
+    consentedAt: t.timestamp(),
+  }
+);
+
+// TL-09: a resident's "Skip" on the agent offer. Final: after it, no lead can be created.
+// Kept apart from agent_contact so skips never change opt-in counts.
+const agentDecline = table(
+  { name: 'agent_decline' },
+  {
+    householdId: t.string().primaryKey(),
+    incidentId: t.string().index('btree'),
+    identity: t.identity(),
+    declinedAt: t.timestamp(),
+  }
+);
+
 const spacetimedb = schema({
   config, invite, member, incident, household, asset, driver,
-  route, routeReport, checkin, job, outbox, jobMessage,
+  route, routeReport, checkin, job, outbox, jobMessage, profile, agentContact, agentDecline,
 });
 export default spacetimedb;
 
@@ -515,6 +560,87 @@ export const updateJob = spacetimedb.reducer(
   }
 );
 
+// ---- Preparedness and voluntary agent contact (TL-09; D -> A; the household's resident) ----
+
+function requireResident(ctx: Ctx) {
+  const me = ctx.db.member.identity.find(ctx.sender);
+  if (me?.role !== 'resident') throw new SenderError('forbidden: requires a resident session');
+  return me;
+}
+
+const MEDICAL_NEEDS = ['home_oxygen', 'dialysis', 'no_heat'];
+const CONTACT_METHODS = ['imessage', 'phone_call'];
+
+export const enrollPreparedness = spacetimedb.reducer(
+  {
+    enrollmentId: t.string(),
+    medicalNeed: t.string(),
+    backupDevice: t.string(),
+    address: t.string(),
+    preferredContact: t.string(),
+  },
+  (ctx, args) => {
+    const me = requireResident(ctx);
+    const existing = ctx.db.profile.enrollmentId.find(args.enrollmentId);
+    if (existing) {
+      if (existing.householdId === me.subjectId) return; // retry: no new profile
+      throw new SenderError('conflict: enrollmentId already used');
+    }
+    const enrolled = ctx.db.profile.householdId.find(me.subjectId);
+    if (enrolled) throw new SenderError(`conflict: ${me.subjectId} already has a preparedness profile`);
+    if (!MEDICAL_NEEDS.includes(args.medicalNeed)) throw new SenderError(`unknown medicalNeed ${args.medicalNeed}`);
+    if (!CONTACT_METHODS.includes(args.preferredContact)) {
+      throw new SenderError(`unknown preferredContact ${args.preferredContact}`);
+    }
+    const backupDevice = args.backupDevice.trim();
+    const address = args.address.trim();
+    if (!backupDevice || backupDevice.length > 200 || !address || address.length > 200) {
+      throw new SenderError('backupDevice and address must be 1-200 characters');
+    }
+    ctx.db.profile.insert({
+      householdId: me.subjectId, enrollmentId: args.enrollmentId, incidentId: me.incidentId,
+      identity: ctx.sender, medicalNeed: args.medicalNeed, backupDevice, address,
+      preferredContact: args.preferredContact, enrolledAt: ctx.timestamp,
+    });
+  }
+);
+
+// Offered only after delivery, so it can never change who gets help or how fast.
+// After skipAgentContact, the household's answer is final and no lead can be created.
+export const requestAgentContact = spacetimedb.reducer({ consentId: t.string() }, (ctx, { consentId }) => {
+  const me = requireResident(ctx);
+  if (!consentId) throw new SenderError('consentId is required');
+  const same = ctx.db.agentContact.consentId.find(consentId);
+  if (same) {
+    if (same.householdId === me.subjectId) return; // retry: no new lead
+    throw new SenderError('conflict: consentId already used');
+  }
+  const lead = ctx.db.agentContact.householdId.find(me.subjectId);
+  if (lead) throw new SenderError(`conflict: ${me.subjectId} already has request L-${lead.id}`);
+  if (ctx.db.agentDecline.householdId.find(me.subjectId)) {
+    throw new SenderError('conflict: the resident skipped. Nothing was saved.');
+  }
+  const p = ctx.db.profile.householdId.find(me.subjectId);
+  if (!p) throw new SenderError(`rejected: ${me.subjectId} has no preparedness profile`);
+  const delivered = [...ctx.db.job.householdId.filter(me.subjectId)].find(j => j.status === 'delivered');
+  if (!delivered) throw new SenderError('conflict: agent contact is offered only after help is delivered');
+  ctx.db.agentContact.insert({
+    id: 0n, consentId, householdId: me.subjectId, incidentId: me.incidentId, identity: ctx.sender,
+    jobId: delivered.id, preferredContact: p.preferredContact, consentedAt: ctx.timestamp,
+  });
+});
+
+// The resident declines the agent offer. Records the decline only; never creates a lead.
+export const skipAgentContact = spacetimedb.reducer(ctx => {
+  const me = requireResident(ctx);
+  if (ctx.db.agentDecline.householdId.find(me.subjectId)) return; // retry: no-op
+  const lead = ctx.db.agentContact.householdId.find(me.subjectId);
+  if (lead) throw new SenderError(`conflict: ${me.subjectId} already has request L-${lead.id}`);
+  ctx.db.agentDecline.insert({
+    householdId: me.subjectId, incidentId: me.incidentId, identity: ctx.sender, declinedAt: ctx.timestamp,
+  });
+});
+
 // ---- Views: each client sees only what its role allows ----
 
 export const myRole = spacetimedb.view(
@@ -607,6 +733,65 @@ export const bridgeCheckins = spacetimedb.view(
   }
 );
 
+// TL-09: a resident sees their own profile and their own lead receipt.
+export const myProfile = spacetimedb.view(
+  { name: 'my_profile', public: true },
+  t.option(profile.rowType),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    return me?.role === 'resident' ? ctx.db.profile.householdId.find(me.subjectId) ?? undefined : undefined;
+  }
+);
+
+export const myAgentRequest = spacetimedb.view(
+  { name: 'my_agent_request', public: true },
+  t.option(agentContact.rowType),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    return me?.role === 'resident' ? ctx.db.agentContact.householdId.find(me.subjectId) ?? undefined : undefined;
+  }
+);
+
+// Lets the resident's screen show "Skipped" after a reload instead of offering again.
+export const myAgentDecline = spacetimedb.view(
+  { name: 'my_agent_decline', public: true },
+  t.option(agentDecline.rowType),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    return me?.role === 'resident' ? ctx.db.agentDecline.householdId.find(me.subjectId) ?? undefined : undefined;
+  }
+);
+
+// TL-09: coordinators see who is registered, and only counts of agent opt-ins (never the leads).
+export const coordinatorProfiles = spacetimedb.view(
+  { name: 'coordinator_profiles', public: true },
+  t.array(profile.rowType),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    return me?.role === 'coordinator' ? [...ctx.db.profile.incidentId.filter(me.incidentId)] : [];
+  }
+);
+
+const RegistryStats = t.row('RegistryStats', {
+  incidentId: t.string().primaryKey(),
+  registrations: t.u32(), // preparedness profiles
+  agentOptIns: t.u32(), // distinct households that asked for an agent; counted separately
+});
+
+export const coordinatorRegistryStats = spacetimedb.view(
+  { name: 'coordinator_registry_stats', public: true },
+  t.array(RegistryStats),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    if (me?.role !== 'coordinator') return [];
+    return [{
+      incidentId: me.incidentId,
+      registrations: [...ctx.db.profile.incidentId.filter(me.incidentId)].length,
+      agentOptIns: [...ctx.db.agentContact.incidentId.filter(me.incidentId)].length,
+    }];
+  }
+);
+
 // A resident sees only their own household's jobs.
 export const residentJobs = spacetimedb.view(
   { name: 'resident_jobs', public: true },
@@ -633,12 +818,18 @@ export const jobMessages = spacetimedb.view(
   }
 );
 
-// B's worker reads committed intents for its incident.
+// B's worker reads committed intents for its incident, only while their job is still current:
+// once updateJob moves a job on (arrived/delivered bumps its version), its old intents drop out,
+// so the bridge can never send a stale ETA.
 export const bridgeOutbox = spacetimedb.view(
   { name: 'bridge_outbox', public: true },
   t.array(outbox.rowType),
   ctx => {
     const me = ctx.db.member.identity.find(ctx.sender);
-    return me?.role === 'bridge' ? [...ctx.db.outbox.incidentId.filter(me.incidentId)] : [];
+    if (me?.role !== 'bridge') return [];
+    return [...ctx.db.outbox.incidentId.filter(me.incidentId)].filter(row => {
+      const job = ctx.db.job.id.find(row.jobId);
+      return job?.status === 'assigned' && job.version === row.jobVersion;
+    });
   }
 );

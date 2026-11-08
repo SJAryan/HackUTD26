@@ -44,6 +44,51 @@ The committed `fixtures/h17-checkin.json` is a **synthetic replay** modeled on a
 capture, holding only the `event` that A (`ingestCheckin`) and D need. Replaying it
 is a replay, not a live integration.
 
+## 3. TL-08: live check-ins and ETA texts
+
+```sh
+npm run live                              # poll Photon, ingest check-ins, send ETA intents
+npm run replay -- fixtures/h17-checkin.json   # synthetic replay; never messages anyone
+```
+
+**Bridge role (TL-05).** `ingestCheckin` needs the `bridge` role and every table is private. On
+the first run the bridge connects as a new SpacetimeDB identity, saves its token to `.stdb-token`
+and claims `BRIDGE_INVITE_CODE`. The module owner creates that invite (see `docs/setup.md`,
+"Roles"). Later runs reconnect with the saved token, so they keep the role and skip the claim.
+The bridge stops with a clear error if the identity has no role and no code, or holds a role other
+than `bridge` for `BRIDGE_INCIDENT_ID`. `.stdb-token` is a credential: it is gitignored, and you
+should never share it. Delete it to start over with a new identity. A republish that clears data
+also clears roles, so after one, claim a fresh invite.
+
+**Check-ins.** The bridge only processes messages from `PHOTON_TEST_SENDER`, bound to
+`BRIDGE_SENDER_HOUSEHOLD`, and records them with `ingestCheckin`. Replay reports the reducer outcome
+only (`ok` / `duplicate no-op` / `error`), because `household` and `checkin` are private. A's
+reducer makes a repeated `eventId` a silent no-op, so a server-side duplicate also reports `ok`.
+
+**ETA texts.** The bridge subscribes to `bridge_outbox`. For each `eta` row addressed to
+`household:<BRIDGE_SENDER_HOUSEHOLD>`, it sends `body` into the sender's own thread with
+`idempotency-key` = the row's `key`. It sends nothing for other recipients and logs
+`no channel for driver:ana (assignment)` instead. Until the sender has texted the line, there is no
+thread, so it logs and waits instead of starting a conversation.
+
+Outbox rows stay `pending` (no reducer marks them sent yet), so `.bridge-state.json` (gitignored)
+records each key as one of:
+
+| Status | Meaning | Next |
+|---|---|---|
+| `accepted` | Photon took the send (delivery not confirmed) | never resent |
+| `needs_reconciliation` | Photon refused it (4xx, 429, 503) | **not retried**; a person checks and resends if the job is still current |
+| `ambiguous` | timeout, 408/502/504 or unreadable response; Photon may have sent it | not resent; check the phone, then edit the entry to reconcile |
+| `obsolete` | a newer version of the same job is in the view, or the row left the view | never sent |
+
+**Failed ETAs are not retried.** The bridge cannot read the private job table, and
+`bridge_outbox` still returns intents for jobs that have moved on (a status change bumps the job
+version but leaves the old row in the view). An automatic retry could therefore text "Ana is
+bringing a battery" after the battery was delivered. Until A's view returns only rows whose job is
+`assigned` at the matching version, a refused ETA is logged as `needs reconciliation` (key only, no
+phone numbers) and left for the coordinator. Records named `failed` in an older
+`.bridge-state.json` are treated the same way.
+
 ## Checks
 
 ```sh

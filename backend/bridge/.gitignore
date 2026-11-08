@@ -1,2 +1,5 @@
 node_modules/
 captures/
+# TL-08 local runtime state: SpacetimeDB identity token (a credential) and Photon send/seen state
+.stdb-token
+.bridge-state.json
