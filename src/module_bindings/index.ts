@@ -37,8 +37,10 @@ import {
 import ClaimInviteReducer from "./claim_invite_reducer";
 import ConfirmRouteReportReducer from "./confirm_route_report_reducer";
 import CreateInviteReducer from "./create_invite_reducer";
+import EnrollPreparednessReducer from "./enroll_preparedness_reducer";
 import IngestCheckinReducer from "./ingest_checkin_reducer";
 import PostJobMessageReducer from "./post_job_message_reducer";
+import RequestAgentContactReducer from "./request_agent_contact_reducer";
 import ReserveReducer from "./reserve_reducer";
 import UpdateJobReducer from "./update_job_reducer";
 
@@ -52,10 +54,14 @@ import CoordinatorCheckinsRow from "./coordinator_checkins_table";
 import CoordinatorDriversRow from "./coordinator_drivers_table";
 import CoordinatorHouseholdsRow from "./coordinator_households_table";
 import CoordinatorJobsRow from "./coordinator_jobs_table";
+import CoordinatorProfilesRow from "./coordinator_profiles_table";
+import CoordinatorRegistryStatsRow from "./coordinator_registry_stats_table";
 import CoordinatorRoutesRow from "./coordinator_routes_table";
 import DriverJobsRow from "./driver_jobs_table";
 import JobMessagesRow from "./job_messages_table";
+import MyAgentRequestRow from "./my_agent_request_table";
 import MyIncidentRow from "./my_incident_table";
+import MyProfileRow from "./my_profile_table";
 import MyRoleRow from "./my_role_table";
 import ResidentJobsRow from "./resident_jobs_table";
 
@@ -112,6 +118,20 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, CoordinatorJobsRow),
+  coordinatorProfiles: __table({
+    name: 'coordinator_profiles',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorProfilesRow),
+  coordinatorRegistryStats: __table({
+    name: 'coordinator_registry_stats',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorRegistryStatsRow),
   coordinatorRoutes: __table({
     name: 'coordinator_routes',
     indexes: [
@@ -133,6 +153,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, JobMessagesRow),
+  myAgentRequest: __table({
+    name: 'my_agent_request',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyAgentRequestRow),
   myIncident: __table({
     name: 'my_incident',
     indexes: [
@@ -140,6 +167,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyIncidentRow),
+  myProfile: __table({
+    name: 'my_profile',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyProfileRow),
   myRole: __table({
     name: 'my_role',
     indexes: [
@@ -161,8 +195,10 @@ const reducersSchema = __reducers(
   __reducerSchema("claim_invite", ClaimInviteReducer),
   __reducerSchema("confirm_route_report", ConfirmRouteReportReducer),
   __reducerSchema("create_invite", CreateInviteReducer),
+  __reducerSchema("enroll_preparedness", EnrollPreparednessReducer),
   __reducerSchema("ingest_checkin", IngestCheckinReducer),
   __reducerSchema("post_job_message", PostJobMessageReducer),
+  __reducerSchema("request_agent_contact", RequestAgentContactReducer),
   __reducerSchema("reserve", ReserveReducer),
   __reducerSchema("update_job", UpdateJobReducer),
 );

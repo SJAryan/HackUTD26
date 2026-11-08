@@ -9,16 +9,20 @@ import { type Infer as __Infer } from "spacetimedb";
 import ClaimInviteReducer from "../claim_invite_reducer";
 import ConfirmRouteReportReducer from "../confirm_route_report_reducer";
 import CreateInviteReducer from "../create_invite_reducer";
+import EnrollPreparednessReducer from "../enroll_preparedness_reducer";
 import IngestCheckinReducer from "../ingest_checkin_reducer";
 import PostJobMessageReducer from "../post_job_message_reducer";
+import RequestAgentContactReducer from "../request_agent_contact_reducer";
 import ReserveReducer from "../reserve_reducer";
 import UpdateJobReducer from "../update_job_reducer";
 
 export type ClaimInviteParams = __Infer<typeof ClaimInviteReducer>;
 export type ConfirmRouteReportParams = __Infer<typeof ConfirmRouteReportReducer>;
 export type CreateInviteParams = __Infer<typeof CreateInviteReducer>;
+export type EnrollPreparednessParams = __Infer<typeof EnrollPreparednessReducer>;
 export type IngestCheckinParams = __Infer<typeof IngestCheckinReducer>;
 export type PostJobMessageParams = __Infer<typeof PostJobMessageReducer>;
+export type RequestAgentContactParams = __Infer<typeof RequestAgentContactReducer>;
 export type ReserveParams = __Infer<typeof ReserveReducer>;
 export type UpdateJobParams = __Infer<typeof UpdateJobReducer>;
 
