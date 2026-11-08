@@ -144,6 +144,18 @@ export type Driver = __Infer<typeof Driver>;
 export const DriverJobs = __t.object("DriverJobs", {});
 export type DriverJobs = __Infer<typeof DriverJobs>;
 
+export const DriverStop = __t.object("DriverStop", {
+  jobId: __t.u64(),
+  householdId: __t.string(),
+  onFile: __t.bool(),
+  address: __t.string(),
+  backupDevice: __t.string(),
+});
+export type DriverStop = __Infer<typeof DriverStop>;
+
+export const DriverStops = __t.object("DriverStops", {});
+export type DriverStops = __Infer<typeof DriverStops>;
+
 export const Followup = __t.object("Followup", {
   id: __t.u64(),
   roundId: __t.u64(),

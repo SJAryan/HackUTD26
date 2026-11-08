@@ -1083,6 +1083,32 @@ export const driverJobs = spacetimedb.view(
   }
 );
 
+// TL-20: where to go. The assigned driver sees the delivery address and backup device of each
+// of their jobs until a coordinator releases it. Never the medical need or contact details.
+// A household without a profile has onFile false and empty fields; the phone says to call.
+const DriverStop = t.row('DriverStop', {
+  jobId: t.u64().primaryKey(),
+  householdId: t.string(),
+  onFile: t.bool(),
+  address: t.string(),
+  backupDevice: t.string(),
+});
+
+export const driverStops = spacetimedb.view(
+  { name: 'driver_stops', public: true },
+  t.array(DriverStop),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    if (me?.role !== 'driver') return [];
+    return [...ctx.db.job.driverId.filter(me.subjectId)]
+      .filter(j => j.incidentId === me.incidentId && !ctx.db.jobRelease.jobId.find(j.id))
+      .map(j => {
+        const p = ctx.db.profile.householdId.find(j.householdId);
+        return { jobId: j.id, householdId: j.householdId, onFile: !!p, address: p?.address ?? '', backupDevice: p?.backupDevice ?? '' };
+      });
+  }
+);
+
 // Check-in receipts for B's bridge: the check-ins recorded for its incident, so the bridge
 // can confirm an ingestCheckin landed (and with which runtime) without reading households.
 export const bridgeCheckins = spacetimedb.view(
