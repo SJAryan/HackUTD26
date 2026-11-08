@@ -39,7 +39,7 @@ export function Register({ go }: { go: (route: string) => void }) {
           <p>
             If the power goes out at {s.registration.address}, Before Zero texts you first, then calls. Your answer tells the response team how much time you have.
           </p>
-          {s.registration.confirmed?.length ? <p className="sub">Confirmed from your policy: {s.registration.confirmed.map((c) => (c.dispatchNeed ? 'powered equipment' : 'step-free access')).join(' and ')}.</p> : null}
+          {s.registration.confirmed?.length ? <p className="sub">From your policy: {s.registration.confirmed.map((c) => (c.dispatchNeed ? `powered equipment (${c.corrected ? `corrected: ${s.registration!.equipment}` : 'confirmed'})` : 'step-free access (confirmed)')).join(' and ')}.</p> : null}
           <p className="sub">Household {DEMO_ID}. Synthetic demo resident.</p>
           <div className="row-actions">
             <button className="btn btn-primary" onClick={() => go('board')}>Open the coordinator board</button>
@@ -67,7 +67,7 @@ export function Register({ go }: { go: (route: string) => void }) {
       <form className="site-card form" onSubmit={submit}>
         <p className="fixture-note">Prefilled with a synthetic resident for the demo.</p>
         {/* A confirmed equipment need selects home oxygen, the only need that runs end to end. */}
-        <PolicyCheck householdId={DEMO_ID} onChange={(kept) => setF((x) => ({ ...x, confirmed: kept, ...(kept.some((k) => k.dispatchNeed) ? { need: 'oxygen' as Need } : {}) }))} />
+        <PolicyCheck householdId={DEMO_ID} saved equipmentInputId="reg-equipment" onChange={(kept) => setF((x) => ({ ...x, confirmed: kept, ...(kept.some((k) => k.dispatchNeed && !k.corrected) ? { need: 'oxygen' as Need } : {}) }))} />
         <div className="field-row">
           <label className="field">
             <span>Full name</span>
@@ -101,7 +101,7 @@ export function Register({ go }: { go: (route: string) => void }) {
         </fieldset>
         <label className="field">
           <span>Equipment and backup</span>
-          <input value={f.equipment} onChange={set('equipment')} required />
+          <input id="reg-equipment" value={f.equipment} onChange={set('equipment')} required />
         </label>
         <label className="check">
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />

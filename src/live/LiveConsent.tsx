@@ -89,7 +89,7 @@ export function LiveRegister({ go }: { go: (route: string) => void }) {
       <form className="site-card form" onSubmit={submit}>
         <p className="fixture-note">Prefilled with a synthetic resident. Your invite links this browser to its household.</p>
         {/* Live mode saves only the need chosen below; A's enrollPreparedness has no field for the confirmation yet. */}
-        {role?.subjectId && <PolicyCheck householdId={role.subjectId} onChange={(kept) => kept.some((k) => k.dispatchNeed) && setF((x) => ({ ...x, medicalNeed: 'home_oxygen' }))} />}
+        {role?.subjectId && <PolicyCheck householdId={role.subjectId} saved={false} equipmentInputId="live-equipment" onChange={(kept) => kept.some((k) => k.dispatchNeed && !k.corrected) && setF((x) => ({ ...x, medicalNeed: 'home_oxygen' }))} />}
         <fieldset className="field">
           <legend>What depends on power</legend>
           <div className="choices">
@@ -104,7 +104,7 @@ export function LiveRegister({ go }: { go: (route: string) => void }) {
         </fieldset>
         <label className="field">
           <span>Equipment and backup</span>
-          <input value={f.backupDevice} onChange={(e) => setF({ ...f, backupDevice: e.target.value })} required maxLength={200} />
+          <input id="live-equipment" value={f.backupDevice} onChange={(e) => setF({ ...f, backupDevice: e.target.value })} required maxLength={200} />
         </label>
         <label className="field">
           <span>Street address</span>
