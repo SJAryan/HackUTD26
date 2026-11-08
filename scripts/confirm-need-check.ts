@@ -54,12 +54,15 @@ run(async () => {
   const reused = await rejects('reused confirmationId', () =>
     h22.reducers.confirmSuggestedNeed({ confirmationId: 'tl15-h17-confirm', needId: 'powered_equipment' }),
     /^conflict: confirmationId already used$/);
+  const notOffered = await rejects('need not suggested for H22', () =>
+    h22.reducers.confirmSuggestedNeed({ confirmationId: 'tl15-h22-forged', needId: 'powered_equipment' }),
+    /^not suggested: H22 was not offered powered_equipment$/);
   const driver = await rejects('driver confirm', () =>
     ana.reducers.confirmSuggestedNeed({ confirmationId: 'tl15-ana', needId: 'powered_equipment' }), /^forbidden/);
   const noRole = await rejects('no-role confirm', () =>
     outsider.reducers.confirmSuggestedNeed({ confirmationId: 'tl15-x', needId: 'powered_equipment' }), /^forbidden/);
   if (stored() !== 1) fail('a rejected call stored a row');
-  console.log(`rejected: ${second} | ${unknown} | ${reused} | ${driver} | ${noRole}`);
+  console.log(`rejected: ${second} | ${unknown} | ${reused} | ${notOffered} | ${driver} | ${noRole}`);
 
   // 3. Privacy: another resident, a driver and a session without a role read nothing.
   await sleep(300);
