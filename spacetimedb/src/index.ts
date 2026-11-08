@@ -154,7 +154,7 @@ const outbox = table(
     jobId: t.u64(),
     jobVersion: t.u32(),
     recipient: t.string(), // 'household:H17' | 'driver:ana'
-    purpose: t.string(), // 'eta' | 'assignment'
+    purpose: t.string(), // 'eta' | 'assignment' | 'call' (TL-14: jobId 0, key round:<roundKey>:household:<id>:call)
     body: t.string(),
     status: t.string(), // 'pending'
     createdAt: t.timestamp(),
@@ -288,7 +288,7 @@ const followupAudit = table(
     id: t.u64().primaryKey().autoInc(),
     followupId: t.u64().index('btree'),
     incidentId: t.string().index('btree'),
-    action: t.string(), // 'created' | 'escalated' | 'claimed' | 'cancelled'
+    action: t.string(), // 'created' | 'escalated' | 'claimed' | 'cancelled' | 'call' (TL-14)
     actor: t.option(t.identity()), // none for the scheduled sweep
     owner: t.identity(), // owner after the action
     note: t.string(),
@@ -313,6 +313,22 @@ const followupTimer = table(
   }
 );
 
+// TL-14: what the bridge reports after placing a check-in call for a silent round. One call per
+// intent (no automatic retry); the follow-up and its owner are unchanged, so the coordinator
+// still owns the callback.
+const callAttempt = table(
+  { name: 'call_attempt' },
+  {
+    key: t.string().primaryKey(), // the call intent's outbox key: round:<roundKey>:household:<id>:call
+    incidentId: t.string().index('btree'),
+    followupId: t.u64().index('btree'),
+    householdId: t.string(),
+    outcome: t.string(), // 'answered' | 'no-answer' | 'busy' | 'failed'
+    recordedBy: t.identity(),
+    recordedAt: t.timestamp(),
+  }
+);
+
 // TL-05 deferred: a delivered job's battery and driver are released for new work.
 const jobRelease = table(
   { name: 'job_release' },
@@ -327,7 +343,7 @@ const jobRelease = table(
 const spacetimedb = schema({
   config, invite, member, incident, household, asset, driver,
   route, routeReport, checkin, job, outbox, jobMessage, profile, agentContact, agentDecline,
-  checkinRound, followup, followupAudit, followupConfig, followupTimer, jobRelease, confirmedNeed,
+  checkinRound, followup, followupAudit, followupConfig, followupTimer, jobRelease, confirmedNeed, callAttempt,
 });
 export default spacetimedb;
 
@@ -446,6 +462,7 @@ export const resetIncident = spacetimedb.reducer({ incidentId: t.string() }, (ct
   for (const r of [...db.agentContact.incidentId.filter(incidentId)]) db.agentContact.id.delete(r.id);
   for (const r of [...db.agentDecline.incidentId.filter(incidentId)]) db.agentDecline.householdId.delete(r.householdId);
   for (const r of [...db.confirmedNeed.incidentId.filter(incidentId)]) db.confirmedNeed.householdId.delete(r.householdId);
+  for (const r of [...db.callAttempt.incidentId.filter(incidentId)]) db.callAttempt.key.delete(r.key);
   // Seeded entities: removed and recreated from the seed, so activeJobIds, versions, runtimes,
   // confirmed delays and freeAt all return to seed values anchored to now.
   for (const r of routeIds) db.route.id.delete(r);
@@ -934,6 +951,15 @@ export const sweepFollowups = spacetimedb.reducer(
         createdAt: ctx.timestamp,
       });
       audit(ctx, f, 'created', `round ${r.id} overdue without a verified reply`);
+      // TL-14: one voice call intent for the bridge. Escalations never queue another.
+      const key = callKey(r);
+      if (!ctx.db.outbox.key.find(key)) {
+        ctx.db.outbox.insert({
+          key, incidentId: r.incidentId, jobId: 0n, jobVersion: 0, recipient: `household:${r.householdId}`,
+          purpose: 'call', status: 'pending', createdAt: ctx.timestamp,
+          body: `Check-in call for household ${r.householdId}: we have not heard back. Please reply by text with how much battery time is left.`,
+        });
+      }
     }
 
     for (const status of ['open', 'claimed']) {
@@ -970,6 +996,43 @@ export const claimFollowup = spacetimedb.reducer(
     const previous = f.owner.toHexString().slice(0, 12);
     const next = ctx.db.followup.id.update({ ...f, status: 'claimed', owner: ctx.sender, version: f.version + 1 });
     audit(ctx, next, 'claimed', `owner was ${previous}`, ctx.sender);
+  }
+);
+
+// ---- TL-14: voice call for a silent round (bridge) ----
+
+const callKey = (r: RoundRow) => `round:${r.roundKey}:household:${r.householdId}:call`;
+const CALL_OUTCOMES = ['answered', 'no-answer', 'busy', 'failed'];
+
+// A call intent's household; its round is the one whose callKey matches (keys are never parsed).
+const callHousehold = (row: { recipient: string }) => row.recipient.replace(/^household:/, '');
+const roundOfCall = (rounds: Iterable<RoundRow>, key: string) => [...rounds].find(r => callKey(r) === key);
+
+// The bridge reports the result of one call. It never changes the follow-up, its owner or the
+// round: even 'answered' is not a verified check-in, so the coordinator still owns the callback.
+// The same key and outcome again is a no-op; a different outcome for a recorded key conflicts.
+export const recordCallAttempt = spacetimedb.reducer(
+  { key: t.string(), outcome: t.string() },
+  (ctx, { key, outcome }) => {
+    const row = ctx.db.outbox.key.find(key);
+    if (!row || row.purpose !== 'call') throw new SenderError(`unknown call intent ${key}`);
+    requireRole(ctx, ['bridge'], row.incidentId);
+    if (!CALL_OUTCOMES.includes(outcome)) {
+      throw new SenderError(`rejected: outcome must be ${CALL_OUTCOMES.join(' | ')}, got ${outcome}`);
+    }
+    const same = ctx.db.callAttempt.key.find(key);
+    if (same) {
+      if (same.outcome === outcome) return; // retry
+      throw new SenderError(`conflict: ${key} already recorded ${same.outcome}`);
+    }
+    const r = roundOfCall(ctx.db.checkinRound.householdId.filter(callHousehold(row)), key);
+    const f = r && ctx.db.followup.roundId.find(r.id);
+    if (!r || !f) throw new SenderError(`unknown call intent ${key}`);
+    ctx.db.callAttempt.insert({
+      key, incidentId: row.incidentId, followupId: f.id, householdId: r.householdId, outcome,
+      recordedBy: ctx.sender, recordedAt: ctx.timestamp,
+    });
+    audit(ctx, f, 'call', `bridge call: ${outcome}; callback stays with its owner`, ctx.sender);
   }
 );
 
@@ -1247,6 +1310,13 @@ export const bridgeOutbox = spacetimedb.view(
     const me = ctx.db.member.identity.find(ctx.sender);
     if (me?.role !== 'bridge') return [];
     return [...ctx.db.outbox.incidentId.filter(me.incidentId)].filter(row => {
+      // TL-14: a call intent shows while its round is still silent, its follow-up is not
+      // cancelled and no attempt is recorded. A verified reply or a recorded call removes it.
+      if (row.purpose === 'call') {
+        const r = roundOfCall(ctx.db.checkinRound.householdId.filter(callHousehold(row)), row.key);
+        const f = r && ctx.db.followup.roundId.find(r.id);
+        return r?.status === 'silent' && !!f && f.status !== 'cancelled' && !ctx.db.callAttempt.key.find(row.key);
+      }
       const job = ctx.db.job.id.find(row.jobId);
       return job?.status === 'assigned' && job.version === row.jobVersion;
     });
@@ -1270,6 +1340,16 @@ export const coordinatorFollowups = spacetimedb.view(
   ctx => {
     const me = ctx.db.member.identity.find(ctx.sender);
     return me?.role === 'coordinator' ? [...ctx.db.followup.incidentId.filter(me.incidentId)] : [];
+  }
+);
+
+// TL-14: coordinators see each call's outcome next to its follow-up (followupId).
+export const coordinatorCallAttempts = spacetimedb.view(
+  { name: 'coordinator_call_attempts', public: true },
+  t.array(callAttempt.rowType),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    return me?.role === 'coordinator' ? [...ctx.db.callAttempt.incidentId.filter(me.incidentId)] : [];
   }
 );
 
