@@ -1,0 +1,33 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+:root{--red:#c41e1e;--ink:#1d2129;--mute:#6b7280;--rule:#e5e7eb;--ground:#f7f7f8}
+*{box-sizing:border-box;margin:0}
+body{width:1440px;height:900px;overflow:hidden;font-family:system-ui,sans-serif;color:var(--ink);background:var(--ground);display:grid;grid-template-columns:220px 1fr}
+.rail{background:#fff;border-right:1px solid var(--rule);padding:20px 16px;display:flex;flex-direction:column;gap:6px}
+.rail .brand{font-weight:700;font-size:20px;color:var(--red);margin-bottom:18px}
+.rail a{padding:8px 10px;border-radius:6px;font-size:14px}.rail a.on{background:#fdecec;color:var(--red);font-weight:600}
+.main{padding:24px 28px;display:flex;flex-direction:column;gap:18px}
+.top{display:flex;align-items:center}.top h1{font-size:22px}.top span{margin-left:auto;font-size:14px;color:var(--mute)}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.k{background:#fff;border:1px solid var(--rule);border-radius:8px;padding:14px 16px}.k b{display:block;font-size:30px}.k span{font-size:13px;color:var(--mute)}
+.split{display:grid;grid-template-columns:1fr 360px;gap:18px;flex:1}
+table{width:100%;background:#fff;border:1px solid var(--rule);border-collapse:collapse;font-size:14px}
+th{text-align:left;color:var(--mute);font-weight:600;padding:10px 14px;border-bottom:1px solid var(--rule)}
+td{padding:12px 14px;border-bottom:1px solid var(--rule)}
+.pill{font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:#eef0f3}.pill.r{background:#fdecec;color:var(--red)}
+.drawer{background:#fff;border:1px solid var(--rule);border-radius:8px;padding:18px;display:flex;flex-direction:column;gap:12px}
+button{margin-top:auto;background:var(--red);color:#fff;border:0;border-radius:6px;padding:12px;font-weight:600;font-size:15px}
+</style></head><body>
+<nav class="rail"><div class="brand">Before Zero</div><a class="on">Board</a><a>Registry</a><a>Outreach</a><a>Resources</a><a>Drivers</a></nav>
+<div class="main"><div class="top"><h1>Winter freeze outage, North zone</h1><span>Clock 02:47. 200 synthetic households.</span></div>
+<div class="kpis"><div class="k"><b>3</b><span>Act now</span></div><div class="k"><b>41</b><span>Watch</span></div><div class="k"><b>18</b><span>Unknown</span></div><div class="k"><b>9</b><span>Silent</span></div><div class="k"><b>2 / 6</b><span>Batteries free</span></div></div>
+<div class="split"><table><tr><th>Household</th><th>Need</th><th>Best option</th><th>Margin</th><th>Lane</th></tr>
+<tr><td>H17</td><td>Home oxygen</td><td>BAT-01, Ana, R4-ALT</td><td>+6 min</td><td><span class="pill r">Act now</span></td></tr>
+<tr><td>H108</td><td>No heat</td><td>Ride, Rosa</td><td>+8 min</td><td><span class="pill r">Act now</span></td></tr>
+<tr><td>H52</td><td>Home dialysis</td><td>GEN-02, Leo</td><td>+9 min</td><td><span class="pill r">Act now</span></td></tr>
+<tr><td>H31</td><td>Home oxygen</td><td>BAT-04, Rosa</td><td>+23 min</td><td><span class="pill">Watch</span></td></tr>
+<tr><td>H64</td><td>Home oxygen</td><td>Follow-up 02:38</td><td>Unknown</td><td><span class="pill">Unknown</span></td></tr>
+<tr><td>H22</td><td>Home oxygen</td><td>Callback: Maya, 02:50</td><td>—</td><td><span class="pill">Silent</span></td></tr></table>
+<div class="drawer"><h2>H17</h2><div>“30 to 60”, iMessage 02:30</div><div>R4: −3 min after confirmed delay</div><div>R4-ALT: +6 min</div><button>Reserve BAT-01 and send Ana</button></div></div>
+</div></body></html>
