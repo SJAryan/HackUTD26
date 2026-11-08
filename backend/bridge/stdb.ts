@@ -16,7 +16,7 @@ export function connect(): Promise<DbConnection> {
       .onConnect((conn) => {
         conn.subscriptionBuilder()
           .onApplied(() => { clearTimeout(timer); resolve(conn); })
-          .onError((_ctx, err) => reject(err))
+          .onError((ctx) => { clearTimeout(timer); reject(ctx.event ?? new Error("SpacetimeDB subscription failed")); })
           .subscribe([tables.household, tables.checkin]);
       })
       .onConnectError((_ctx, err) => { clearTimeout(timer); reject(err); })
