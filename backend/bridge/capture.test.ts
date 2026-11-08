@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CAPTURES_DIR, captureTarget, sanitize, toFixture } from "./capture.ts";
+import { CAPTURES_DIR, captureTarget, sanitize, toFixture, writeCapture } from "./capture.ts";
 
 // Synthetic message in the listMessages item shape; numbers are fictional 555 values.
 const sender = "+15555550117";
@@ -106,4 +107,24 @@ test("committed H17 fixture is synthetic and matches the ingestCheckin argument 
   assert.equal(args.incidentId, "tornado-1");
   assert.equal(args.householdId, "H17");
   assert.equal(e.extracted, null);
+});
+
+test("writeCapture creates a missing captures/ dir and never overwrites", () => {
+  const root = mkdtempSync(join(tmpdir(), "bridge-capture-"));
+  try {
+    const target = join(root, "captures", "h17-checkin.json");
+    assert.ok(!existsSync(join(root, "captures")));
+    writeCapture(target, { event: { eventId: "synthetic-1" } });
+    assert.equal(JSON.parse(readFileSync(target, "utf8")).event.eventId, "synthetic-1");
+    assert.throws(() => writeCapture(target, { event: { eventId: "synthetic-2" } }), /EEXIST/);
+    assert.equal(JSON.parse(readFileSync(target, "utf8")).event.eventId, "synthetic-1");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("fail-closed scan also refuses an identity left in an object key", () => {
+  assert.throws(() => sanitize({ participants: { "+1 (214) 555-0101": "usr_h" } }, fakeSender, fakeAgent), /refusing to write/);
+  assert.throws(() => sanitize({ "Test.Sender@Example.com": true }, "test.sender@example.com", fakeAgent), /refusing to write/);
+  assert.deepEqual(sanitize({ participants: { usr_h: "ok" } }, fakeSender, fakeAgent), { participants: { usr_h: "ok" } });
 });

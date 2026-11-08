@@ -63,12 +63,14 @@ export function sanitize(message: unknown, sender: string, agent: string, projec
     }
     if (Array.isArray(v)) return v.map(walk);
     if (v && typeof v === "object") {
-      return Object.fromEntries(Object.entries(v).filter(([k]) => !PERSONAL_KEYS.has(k)).map(([k, x]) => [k, walk(x)]));
+      const kept = Object.entries(v).filter(([k]) => !PERSONAL_KEYS.has(k));
+      strings.push(...kept.map(([k]) => k)); // keys are written too, so the fail-closed scan checks them
+      return Object.fromEntries(kept.map(([k, x]) => [k, walk(x)]));
     }
     return v;
   };
   const clean = walk(message);
-  // Fail closed: no identity may survive in any form, even with every non-digit stripped.
+  // Fail closed: no identity may survive in any value or key, even with every non-digit stripped.
   for (const s of strings) {
     for (const [real] of identities) {
       const d = phoneDigits(real);
@@ -100,6 +102,12 @@ export function toFixture(m: Item, c: Pick<Config, "sender" | "agent"> & { proje
   };
 }
 
+// captures/ is gitignored, so a fresh checkout doesn't have it. "wx" never overwrites an existing capture.
+export function writeCapture(target: string, fixture: unknown): void {
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, JSON.stringify(fixture, null, 2) + "\n", { flag: "wx" });
+}
+
 function isFromTestSender(m: Item, c: Config, startedAt: number): boolean {
   if (m.platform !== c.platform || m.status !== "received") return false;
   if (Date.parse(m.createdAt) < startedAt) return false;
@@ -125,7 +133,7 @@ async function capture(c: Config, householdBinding: string, incidentId: string, 
       const m = page.items.find((item) => isFromTestSender(item, c, startedAt));
       if (m) {
         const fixture = toFixture(m, c, householdBinding, incidentId, new Date().toISOString());
-        writeFileSync(outFile, JSON.stringify(fixture, null, 2) + "\n", { flag: "wx" });
+        writeCapture(outFile, fixture);
         console.log(`Saved ${outFile} (eventId ${fixture.event.eventId}).`);
         return;
       }
