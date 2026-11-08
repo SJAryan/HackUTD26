@@ -10,13 +10,40 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const AgentContact = __t.object("AgentContact", {
+  id: __t.u64(),
+  consentId: __t.string(),
+  householdId: __t.string(),
+  incidentId: __t.string(),
+  identity: __t.identity(),
+  jobId: __t.u64(),
+  preferredContact: __t.string(),
+  consentedAt: __t.timestamp(),
+});
+export type AgentContact = __Infer<typeof AgentContact>;
+
+export const AgentDecline = __t.object("AgentDecline", {
+  householdId: __t.string(),
+  incidentId: __t.string(),
+  identity: __t.identity(),
+  declinedAt: __t.timestamp(),
+});
+export type AgentDecline = __Infer<typeof AgentDecline>;
+
 export const Asset = __t.object("Asset", {
   id: __t.string(),
   incidentId: __t.string(),
   kind: __t.string(),
-  status: __t.string(),
+  freeAt: __t.timestamp(),
+  activeJobId: __t.option(__t.u64()),
 });
 export type Asset = __Infer<typeof Asset>;
+
+export const BridgeCheckins = __t.object("BridgeCheckins", {});
+export type BridgeCheckins = __Infer<typeof BridgeCheckins>;
+
+export const BridgeOutbox = __t.object("BridgeOutbox", {});
+export type BridgeOutbox = __Infer<typeof BridgeOutbox>;
 
 export const Checkin = __t.object("Checkin", {
   eventId: __t.string(),
@@ -30,23 +57,124 @@ export const Checkin = __t.object("Checkin", {
 });
 export type Checkin = __Infer<typeof Checkin>;
 
+export const CheckinRound = __t.object("CheckinRound", {
+  id: __t.u64(),
+  roundKey: __t.string(),
+  incidentId: __t.string(),
+  householdId: __t.string(),
+  status: __t.string(),
+  openedBy: __t.identity(),
+  openedAt: __t.timestamp(),
+  dueAt: __t.timestamp(),
+  answeredEventId: __t.option(__t.string()),
+  closedAt: __t.option(__t.timestamp()),
+});
+export type CheckinRound = __Infer<typeof CheckinRound>;
+
+export const Config = __t.object("Config", {
+  id: __t.u32(),
+  owner: __t.identity(),
+});
+export type Config = __Infer<typeof Config>;
+
+export const CoordinatorAssets = __t.object("CoordinatorAssets", {});
+export type CoordinatorAssets = __Infer<typeof CoordinatorAssets>;
+
+export const CoordinatorCheckins = __t.object("CoordinatorCheckins", {});
+export type CoordinatorCheckins = __Infer<typeof CoordinatorCheckins>;
+
+export const CoordinatorDrivers = __t.object("CoordinatorDrivers", {});
+export type CoordinatorDrivers = __Infer<typeof CoordinatorDrivers>;
+
+export const CoordinatorFollowupAudit = __t.object("CoordinatorFollowupAudit", {});
+export type CoordinatorFollowupAudit = __Infer<typeof CoordinatorFollowupAudit>;
+
+export const CoordinatorFollowups = __t.object("CoordinatorFollowups", {});
+export type CoordinatorFollowups = __Infer<typeof CoordinatorFollowups>;
+
+export const CoordinatorHouseholds = __t.object("CoordinatorHouseholds", {});
+export type CoordinatorHouseholds = __Infer<typeof CoordinatorHouseholds>;
+
+export const CoordinatorJobs = __t.object("CoordinatorJobs", {});
+export type CoordinatorJobs = __Infer<typeof CoordinatorJobs>;
+
+export const CoordinatorProfiles = __t.object("CoordinatorProfiles", {});
+export type CoordinatorProfiles = __Infer<typeof CoordinatorProfiles>;
+
+export const CoordinatorRegistryStats = __t.object("CoordinatorRegistryStats", {});
+export type CoordinatorRegistryStats = __Infer<typeof CoordinatorRegistryStats>;
+
+export const CoordinatorRounds = __t.object("CoordinatorRounds", {});
+export type CoordinatorRounds = __Infer<typeof CoordinatorRounds>;
+
+export const CoordinatorRoutes = __t.object("CoordinatorRoutes", {});
+export type CoordinatorRoutes = __Infer<typeof CoordinatorRoutes>;
+
 export const Driver = __t.object("Driver", {
   id: __t.string(),
   incidentId: __t.string(),
   name: __t.string(),
-  status: __t.string(),
+  freeAt: __t.timestamp(),
+  activeJobId: __t.option(__t.u64()),
 });
 export type Driver = __Infer<typeof Driver>;
+
+export const DriverJobs = __t.object("DriverJobs", {});
+export type DriverJobs = __Infer<typeof DriverJobs>;
+
+export const Followup = __t.object("Followup", {
+  id: __t.u64(),
+  roundId: __t.u64(),
+  incidentId: __t.string(),
+  householdId: __t.string(),
+  status: __t.string(),
+  owner: __t.identity(),
+  dueAt: __t.timestamp(),
+  escalationLevel: __t.u32(),
+  version: __t.u32(),
+  lastEventId: __t.option(__t.string()),
+  lastObservedAt: __t.option(__t.timestamp()),
+  runtimeLowerMin: __t.option(__t.u32()),
+  runtimeUpperMin: __t.option(__t.u32()),
+  createdAt: __t.timestamp(),
+});
+export type Followup = __Infer<typeof Followup>;
+
+export const FollowupAudit = __t.object("FollowupAudit", {
+  id: __t.u64(),
+  followupId: __t.u64(),
+  incidentId: __t.string(),
+  action: __t.string(),
+  actor: __t.option(__t.identity()),
+  owner: __t.identity(),
+  note: __t.string(),
+  at: __t.timestamp(),
+});
+export type FollowupAudit = __Infer<typeof FollowupAudit>;
+
+export const FollowupConfig = __t.object("FollowupConfig", {
+  id: __t.u32(),
+  intervalSec: __t.u32(),
+});
+export type FollowupConfig = __Infer<typeof FollowupConfig>;
+
+export const FollowupTimer = __t.object("FollowupTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type FollowupTimer = __Infer<typeof FollowupTimer>;
 
 export const Household = __t.object("Household", {
   id: __t.string(),
   incidentId: __t.string(),
   label: __t.string(),
+  need: __t.string(),
   version: __t.u32(),
   runtimeLowerMin: __t.option(__t.u32()),
   runtimeUpperMin: __t.option(__t.u32()),
   lastObservedAt: __t.option(__t.timestamp()),
   lastEventId: __t.option(__t.string()),
+  activeJobId: __t.option(__t.u64()),
 });
 export type Household = __Infer<typeof Household>;
 
@@ -57,4 +185,137 @@ export const Incident = __t.object("Incident", {
   clockAt: __t.timestamp(),
 });
 export type Incident = __Infer<typeof Incident>;
+
+export const Invite = __t.object("Invite", {
+  code: __t.string(),
+  role: __t.string(),
+  incidentId: __t.string(),
+  subjectId: __t.string(),
+});
+export type Invite = __Infer<typeof Invite>;
+
+export const Job = __t.object("Job", {
+  id: __t.u64(),
+  requestId: __t.string(),
+  incidentId: __t.string(),
+  householdId: __t.string(),
+  routeId: __t.string(),
+  driverId: __t.string(),
+  assetId: __t.string(),
+  version: __t.u32(),
+  status: __t.string(),
+  etaAt: __t.timestamp(),
+  createdBy: __t.identity(),
+  createdAt: __t.timestamp(),
+});
+export type Job = __Infer<typeof Job>;
+
+export const JobMessage = __t.object("JobMessage", {
+  id: __t.u64(),
+  dedupeKey: __t.string(),
+  incidentId: __t.string(),
+  jobId: __t.u64(),
+  seq: __t.u32(),
+  kind: __t.string(),
+  senderRole: __t.string(),
+  senderLabel: __t.string(),
+  senderIdentity: __t.identity(),
+  clientMessageId: __t.string(),
+  text: __t.string(),
+  sentAt: __t.timestamp(),
+});
+export type JobMessage = __Infer<typeof JobMessage>;
+
+export const JobMessages = __t.object("JobMessages", {});
+export type JobMessages = __Infer<typeof JobMessages>;
+
+export const JobRelease = __t.object("JobRelease", {
+  jobId: __t.u64(),
+  incidentId: __t.string(),
+  releasedBy: __t.identity(),
+  releasedAt: __t.timestamp(),
+});
+export type JobRelease = __Infer<typeof JobRelease>;
+
+export const Member = __t.object("Member", {
+  identity: __t.identity(),
+  role: __t.string(),
+  incidentId: __t.string(),
+  subjectId: __t.string(),
+});
+export type Member = __Infer<typeof Member>;
+
+export const MyAgentDecline = __t.object("MyAgentDecline", {});
+export type MyAgentDecline = __Infer<typeof MyAgentDecline>;
+
+export const MyAgentRequest = __t.object("MyAgentRequest", {});
+export type MyAgentRequest = __Infer<typeof MyAgentRequest>;
+
+export const MyIncident = __t.object("MyIncident", {});
+export type MyIncident = __Infer<typeof MyIncident>;
+
+export const MyProfile = __t.object("MyProfile", {});
+export type MyProfile = __Infer<typeof MyProfile>;
+
+export const MyRole = __t.object("MyRole", {});
+export type MyRole = __Infer<typeof MyRole>;
+
+export const Outbox = __t.object("Outbox", {
+  key: __t.string(),
+  incidentId: __t.string(),
+  jobId: __t.u64(),
+  jobVersion: __t.u32(),
+  recipient: __t.string(),
+  purpose: __t.string(),
+  body: __t.string(),
+  status: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type Outbox = __Infer<typeof Outbox>;
+
+export const Profile = __t.object("Profile", {
+  householdId: __t.string(),
+  enrollmentId: __t.string(),
+  incidentId: __t.string(),
+  identity: __t.identity(),
+  medicalNeed: __t.string(),
+  backupDevice: __t.string(),
+  address: __t.string(),
+  preferredContact: __t.string(),
+  enrolledAt: __t.timestamp(),
+});
+export type Profile = __Infer<typeof Profile>;
+
+export const RegistryStats = __t.object("RegistryStats", {
+  incidentId: __t.string(),
+  registrations: __t.u32(),
+  agentOptIns: __t.u32(),
+});
+export type RegistryStats = __Infer<typeof RegistryStats>;
+
+export const ResidentJobs = __t.object("ResidentJobs", {});
+export type ResidentJobs = __Infer<typeof ResidentJobs>;
+
+export const Route = __t.object("Route", {
+  id: __t.string(),
+  incidentId: __t.string(),
+  householdId: __t.string(),
+  driverId: __t.string(),
+  assetId: __t.string(),
+  driverToAssetMin: __t.u32(),
+  pickupMin: __t.u32(),
+  assetToHomeMin: __t.u32(),
+  setupMin: __t.u32(),
+  confirmedDelayMin: __t.u32(),
+});
+export type Route = __Infer<typeof Route>;
+
+export const RouteReport = __t.object("RouteReport", {
+  reportId: __t.string(),
+  routeId: __t.string(),
+  delayMin: __t.u32(),
+  confirmedBy: __t.identity(),
+  confirmedAt: __t.timestamp(),
+});
+export type RouteReport = __Infer<typeof RouteReport>;
 

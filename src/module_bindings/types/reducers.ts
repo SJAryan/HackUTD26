@@ -6,7 +6,35 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import ClaimFollowupReducer from "../claim_followup_reducer";
+import ClaimInviteReducer from "../claim_invite_reducer";
+import ConfirmRouteReportReducer from "../confirm_route_report_reducer";
+import CreateInviteReducer from "../create_invite_reducer";
+import EnrollPreparednessReducer from "../enroll_preparedness_reducer";
 import IngestCheckinReducer from "../ingest_checkin_reducer";
+import OpenCheckinRoundReducer from "../open_checkin_round_reducer";
+import PostJobMessageReducer from "../post_job_message_reducer";
+import ReleaseJobReducer from "../release_job_reducer";
+import RequestAgentContactReducer from "../request_agent_contact_reducer";
+import ReserveReducer from "../reserve_reducer";
+import ResetIncidentReducer from "../reset_incident_reducer";
+import SetFollowupIntervalReducer from "../set_followup_interval_reducer";
+import SkipAgentContactReducer from "../skip_agent_contact_reducer";
+import UpdateJobReducer from "../update_job_reducer";
 
+export type ClaimFollowupParams = __Infer<typeof ClaimFollowupReducer>;
+export type ClaimInviteParams = __Infer<typeof ClaimInviteReducer>;
+export type ConfirmRouteReportParams = __Infer<typeof ConfirmRouteReportReducer>;
+export type CreateInviteParams = __Infer<typeof CreateInviteReducer>;
+export type EnrollPreparednessParams = __Infer<typeof EnrollPreparednessReducer>;
 export type IngestCheckinParams = __Infer<typeof IngestCheckinReducer>;
+export type OpenCheckinRoundParams = __Infer<typeof OpenCheckinRoundReducer>;
+export type PostJobMessageParams = __Infer<typeof PostJobMessageReducer>;
+export type ReleaseJobParams = __Infer<typeof ReleaseJobReducer>;
+export type RequestAgentContactParams = __Infer<typeof RequestAgentContactReducer>;
+export type ReserveParams = __Infer<typeof ReserveReducer>;
+export type ResetIncidentParams = __Infer<typeof ResetIncidentReducer>;
+export type SetFollowupIntervalParams = __Infer<typeof SetFollowupIntervalReducer>;
+export type SkipAgentContactParams = __Infer<typeof SkipAgentContactReducer>;
+export type UpdateJobParams = __Infer<typeof UpdateJobReducer>;
 
