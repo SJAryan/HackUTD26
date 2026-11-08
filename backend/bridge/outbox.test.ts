@@ -201,3 +201,70 @@ test("a send record under a bare outbox key from an older build does not block t
   await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
   assert.deepEqual(w.sends.map((s) => s.key), [sendKey(row)]);
 });
+
+// Pre-upgrade .bridge-state.json files keyed records by the bare outbox key.
+const AFTER_CREATED = "2026-11-08T08:00:05.000Z"; // sent 5s after the row was created
+const WELL_BEFORE = "2026-11-08T07:00:00.000Z"; // an hour before: an earlier database instance
+const SKEW = "2026-11-08T07:59:30.000Z"; // 30s before: inside the skew window
+
+for (const status of ["accepted", "ambiguous", "needs_reconciliation", "failed", "obsolete"] as const) {
+  test(`upgrade without reset: a legacy ${status} record is migrated to the send key and not resent`, async () => {
+    const w = world();
+    const row = eta(1);
+    w.sent[row.key] = { status, at: AFTER_CREATED, attempts: 1 };
+    assert.equal(await processOutbox([row], "H17", space, w.sent, w.deps, w.noted), true);
+    assert.equal(w.sends.length, 0);
+    await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
+    assert.equal(w.sends.length, 0);
+    assert.equal(w.sent[row.key], undefined);
+    assert.deepEqual(w.sent[sendKey(row)], {
+      status: status === "failed" ? "needs_reconciliation" : status, at: AFTER_CREATED, attempts: 1,
+    });
+    assert.ok(w.log.some((l) => l.includes("migrated legacy send record")));
+  });
+}
+
+test("reset: a legacy record from well before the new row is dropped and the row sends once", async () => {
+  const w = world();
+  const row = eta(1);
+  w.sent[row.key] = { status: "accepted", at: WELL_BEFORE, attempts: 1 };
+  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
+  assert.deepEqual(w.sends.map((s) => s.key), [sendKey(row)]);
+  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
+  assert.equal(w.sends.length, 1);
+  assert.equal(w.sent[row.key], undefined);
+  assert.equal(w.sent[sendKey(row)].status, "accepted");
+});
+
+test("reset: a legacy failed record from well before the new row is not mistaken for this row", async () => {
+  const w = world();
+  const row = eta(1);
+  w.sent[row.key] = { status: "failed", at: WELL_BEFORE, attempts: 1 };
+  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
+  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
+  assert.equal(w.sends.length, 1);
+  assert.equal(w.sent[row.key], undefined);
+});
+
+for (const [label, legacyAt] of [["within 60s before createdAt", SKEW], ["unparseable", "not a date"]] as const) {
+  test(`legacy record with ${label} timing is held for reconciliation, not sent`, async () => {
+    const w = world();
+    const row = eta(1);
+    w.sent[row.key] = { status: "accepted", at: legacyAt, attempts: 2 };
+    assert.equal(await processOutbox([row], "H17", space, w.sent, w.deps, w.noted), true);
+    await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
+    assert.equal(w.sends.length, 0);
+    assert.equal(w.sent[row.key], undefined);
+    assert.deepEqual(w.sent[sendKey(row)], { status: "needs_reconciliation", at: "2026-11-08T08:00:00.000Z", attempts: 2 });
+    assert.equal(w.log.filter((l) => l.includes("needs reconciliation")).length, 1);
+  });
+}
+
+test("no legacy record: a genuinely new row sends once, then not again", async () => {
+  const w = world();
+  const row = eta(3);
+  w.sent[eta(1).key] = { status: "accepted", at: AFTER_CREATED, attempts: 1 }; // unrelated legacy key
+  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
+  await processOutbox([row], "H17", space, w.sent, w.deps, w.noted);
+  assert.deepEqual(w.sends.map((s) => s.key), [sendKey(row)]);
+});

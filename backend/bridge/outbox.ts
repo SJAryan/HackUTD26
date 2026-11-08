@@ -41,6 +41,8 @@ export function classifySendError(error: unknown): Exclude<SendResult, "accepted
 export const sendKey = (row: OutboxRow) => `${row.key}@${row.createdAt.microsSinceUnixEpoch}`;
 // Logs show the outbox key only, so log lines stay free of long digit runs.
 export const outboxKeyOf = (key: string) => key.split("@")[0];
+// A bare-key record sent less than this long before its row's createdAt is too close to call.
+const LEGACY_SKEW_MS = 60_000;
 
 // Returns true when the send log changed and should be saved.
 export async function processOutbox(
@@ -52,8 +54,30 @@ export async function processOutbox(
   const at = new Date(deps.now()).toISOString();
   let changed = false;
 
-  // Act only on the current snapshot. A legacy failed intent that left the view is obsolete.
   const snapshot = [...rows];
+  // Pre-upgrade state files keyed records by the bare outbox key. Move each one to its send key
+  // before anything else reads the log, so its `at` is still the original send time.
+  for (const row of snapshot) {
+    const key = sendKey(row);
+    const legacy = sent[row.key];
+    if (!legacy || sent[key]) continue;
+    delete sent[row.key];
+    changed = true;
+    const legacyMs = Date.parse(legacy.at);
+    const rowCreatedMs = Number(row.createdAt.microsSinceUnixEpoch / 1000n);
+    if (legacyMs >= rowCreatedMs) { // sent after this row existed: it is this row
+      sent[key] = { ...legacy, status: legacy.status === "failed" ? "needs_reconciliation" : legacy.status };
+      deps.log(`OUTBOX ${row.key} migrated legacy send record (${sent[key].status}); not resending`);
+    } else if (legacyMs < rowCreatedMs - LEGACY_SKEW_MS) { // sent well before this row: earlier database
+      deps.log(`OUTBOX ${row.key} legacy send record predates this row (earlier database); treating as new`);
+    } else { // within the clock-skew window or unreadable: cannot tell, so do not risk a duplicate
+      sent[key] = { status: "needs_reconciliation", at, attempts: legacy.attempts };
+      noted.add(`reconcile:${key}`);
+      deps.log(`OUTBOX ${row.key} legacy send record could not be matched to this row; not sending, needs reconciliation`);
+    }
+  }
+
+  // Act only on the current snapshot. A legacy failed intent that left the view is obsolete.
   const present = new Set(snapshot.map(sendKey));
   for (const [key, prev] of Object.entries(sent)) {
     if (prev.status === "failed" && !present.has(key)) {
