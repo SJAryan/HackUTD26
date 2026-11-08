@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { suggestNeeds } from '../spacetimedb/src/domain/suggest';
-import { keptNeeds, needLine } from '../src/screens/policyChoice';
+import { keptNeeds, needLine, needsDescription } from '../src/screens/policyChoice';
 import { policySignals } from './policy-signals';
 
 const h17 = suggestNeeds(policySignals.find(s => s.householdId === 'H17')!);
@@ -36,4 +36,17 @@ test('step-free access: confirm keeps a driver note with no dispatch need; it ca
 
 test('kept needs never carry the policy sources', () => {
   for (const k of keptNeeds(h17, { powered_equipment: 'confirm' })) assert.deepEqual(Object.keys(k).sort(), ['dispatchNeed', 'id']);
+});
+
+test('a correction is blocked until the resident describes their own equipment', () => {
+  const prefill = 'Oxygen concentrator, one backup tank';
+  const corrected = keptNeeds(h17, { powered_equipment: 'different' });
+  assert.equal(needsDescription(corrected, prefill, prefill), true, 'untouched prefill');
+  assert.equal(needsDescription(corrected, '', prefill), true, 'cleared field');
+  assert.equal(needsDescription(corrected, '   ', prefill), true, 'only spaces');
+  assert.equal(needsDescription(corrected, 'CPAP', prefill), false, 'CPAP succeeds');
+  // Confirm, skip and "does not apply" never require a new description.
+  for (const c of ['confirm', 'skip', 'not_mine'] as const) {
+    assert.equal(needsDescription(keptNeeds(h17, { powered_equipment: c }), prefill, prefill), false, c);
+  }
 });

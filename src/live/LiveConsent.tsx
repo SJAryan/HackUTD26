@@ -9,6 +9,7 @@ import { Icon } from '../ui/icons';
 import { errorText, hhmm, ms, newId } from './model';
 import { useMyRole } from './RoleGate';
 import { PolicyCheck } from '../screens/PolicyCheck';
+import { needsDescription, type KeptNeed } from '../screens/policyChoice';
 
 type Status = { kind: 'idle' | 'sending' | 'error'; text?: string };
 
@@ -37,6 +38,8 @@ export function LiveRegister({ go }: { go: (route: string) => void }) {
   const enroll = useReducer(reducers.enrollPreparedness);
   const [f, setF] = useState(DEFAULTS);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
+  const [kept, setKept] = useState<KeptNeed[]>([]);
+  const [describe, setDescribe] = useState(false);
   // Stable until the profile lands, so a retried submit is a no-op on the server.
   const enrollmentId = useRef(newId());
   const profile = profiles[0];
@@ -65,6 +68,11 @@ export function LiveRegister({ go }: { go: (route: string) => void }) {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (status.kind === 'sending') return;
+    if (needsDescription(kept, f.backupDevice, DEFAULTS.backupDevice)) {
+      setDescribe(true);
+      document.getElementById('live-equipment')?.focus();
+      return;
+    }
     setStatus({ kind: 'sending' });
     enroll({ enrollmentId: enrollmentId.current, ...f, backupDevice: f.backupDevice.trim(), address: f.address.trim() })
       // Success shows the profile from myProfile, not from this promise.
@@ -89,7 +97,15 @@ export function LiveRegister({ go }: { go: (route: string) => void }) {
       <form className="site-card form" onSubmit={submit}>
         <p className="fixture-note">Prefilled with a synthetic resident. Your invite links this browser to its household.</p>
         {/* Live mode saves only the need chosen below; A's enrollPreparedness has no field for the confirmation yet. */}
-        {role?.subjectId && <PolicyCheck householdId={role.subjectId} saved={false} equipmentInputId="live-equipment" onChange={(kept) => kept.some((k) => k.dispatchNeed && !k.corrected) && setF((x) => ({ ...x, medicalNeed: 'home_oxygen' }))} />}
+        {role?.subjectId && <PolicyCheck householdId={role.subjectId} saved={false} equipmentInputId="live-equipment" onChange={(next) => {
+          setKept(next);
+          setDescribe(false);
+          setF((x) => ({
+            ...x,
+            ...(next.some((k) => k.dispatchNeed && !k.corrected) ? { medicalNeed: 'home_oxygen' } : {}),
+            ...(next.some((k) => k.corrected) && x.backupDevice === DEFAULTS.backupDevice ? { backupDevice: '' } : {}),
+          }));
+        }} />}
         <fieldset className="field">
           <legend>What depends on power</legend>
           <div className="choices">
@@ -104,7 +120,8 @@ export function LiveRegister({ go }: { go: (route: string) => void }) {
         </fieldset>
         <label className="field">
           <span>Equipment and backup</span>
-          <input id="live-equipment" value={f.backupDevice} onChange={(e) => setF({ ...f, backupDevice: e.target.value })} required maxLength={200} />
+          <input id="live-equipment" value={f.backupDevice} onChange={(e) => { setDescribe(false); setF({ ...f, backupDevice: e.target.value }); }} required maxLength={200} aria-invalid={describe} placeholder={kept.some((k) => k.corrected) ? 'For example: CPAP machine, one battery pack' : undefined} />
+          {describe && <small className="field-error" role="alert">Describe the equipment you use, since it differs from your policy.</small>}
         </label>
         <label className="field">
           <span>Street address</span>

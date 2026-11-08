@@ -19,6 +19,14 @@ export function keptNeeds(suggestions: readonly NeedSuggestion[], choices: Choic
   });
 }
 
+// A correction needs the resident's own description: blank or the untouched demo prefill
+// does not count, so a receipt never shows 'corrected: <the text we filled in>'.
+export function needsDescription(kept: readonly KeptNeed[] | undefined, equipment: string, prefill: string) {
+  if (!kept?.some((k) => k.corrected)) return false;
+  const text = equipment.trim();
+  return text === '' || text === prefill.trim();
+}
+
 // The coordinator's Need line. A correction replaces the registered label with what dispatch
 // uses, since the resident described different equipment. Never includes the policy sources.
 export function needLine(registered: string, kept: readonly KeptNeed[] | undefined) {

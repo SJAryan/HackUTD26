@@ -3,6 +3,7 @@ import { DEMO_ID, NEED_LABEL, type Need } from '../demo/fixture';
 import { register, useDemo, type Registration } from '../demo/store';
 import { Icon } from '../ui/icons';
 import { PolicyCheck } from './PolicyCheck';
+import { needsDescription } from './policyChoice';
 
 // Only needs with a working check-in and dispatch flow can be chosen.
 const READY: Need[] = ['oxygen'];
@@ -24,9 +25,15 @@ export function Register({ go }: { go: (route: string) => void }) {
   const [consent, setConsent] = useState(true);
   const set = (k: keyof Registration) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
 
+  const [describe, setDescribe] = useState(false);
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!consent) return;
+    if (needsDescription(f.confirmed, f.equipment, DEFAULTS.equipment)) {
+      setDescribe(true);
+      document.getElementById('reg-equipment')?.focus();
+      return;
+    }
     register(f);
   };
 
@@ -67,7 +74,16 @@ export function Register({ go }: { go: (route: string) => void }) {
       <form className="site-card form" onSubmit={submit}>
         <p className="fixture-note">Prefilled with a synthetic resident for the demo.</p>
         {/* A confirmed equipment need selects home oxygen, the only need that runs end to end. */}
-        <PolicyCheck householdId={DEMO_ID} saved equipmentInputId="reg-equipment" onChange={(kept) => setF((x) => ({ ...x, confirmed: kept, ...(kept.some((k) => k.dispatchNeed && !k.corrected) ? { need: 'oxygen' as Need } : {}) }))} />
+        <PolicyCheck householdId={DEMO_ID} saved equipmentInputId="reg-equipment" onChange={(kept) => {
+          setDescribe(false);
+          setF((x) => ({
+            ...x,
+            confirmed: kept,
+            ...(kept.some((k) => k.dispatchNeed && !k.corrected) ? { need: 'oxygen' as Need } : {}),
+            // A correction starts from an empty field, never from the demo's oxygen text.
+            ...(kept.some((k) => k.corrected) && x.equipment === DEFAULTS.equipment ? { equipment: '' } : {}),
+          }));
+        }} />
         <div className="field-row">
           <label className="field">
             <span>Full name</span>
@@ -101,7 +117,8 @@ export function Register({ go }: { go: (route: string) => void }) {
         </fieldset>
         <label className="field">
           <span>Equipment and backup</span>
-          <input id="reg-equipment" value={f.equipment} onChange={set('equipment')} required />
+          <input id="reg-equipment" value={f.equipment} onChange={(e) => { setDescribe(false); set('equipment')(e); }} required aria-invalid={describe} placeholder={f.confirmed?.some((k) => k.corrected) ? 'For example: CPAP machine, one battery pack' : undefined} />
+          {describe && <small className="field-error" role="alert">Describe the equipment you use, since it differs from your policy.</small>}
         </label>
         <label className="check">
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
