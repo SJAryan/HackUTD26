@@ -1,4 +1,4 @@
-# Before Zero: setup and shared contract (TL-01, TL-05, TL-06, TL-09, TL-11, TL-18)
+# Before Zero: setup and shared contract (TL-01, TL-05, TL-06, TL-09, TL-11, TL-15, TL-18)
 
 Owner: A (backend and integration). Scaffolded with `spacetime init --template react-ts`.
 All data in the seed is synthetic.
@@ -56,6 +56,7 @@ npm run stdb:reset:local && npm run check:tl05
 npm run stdb:reset:local && npm run check:tl06
 npm run stdb:reset:local && npm run check:tl09
 npm run stdb:reset:local && npm run check:tl11
+npm run stdb:reset:local && npm run check:tl15
 npm run stdb:reset:local && npm run check:tl18
 ```
 
@@ -90,6 +91,13 @@ npm run stdb:reset:local && npm run check:tl18
   claimed, cancelled, and calling the sweep directly is refused. After delivery, `releaseJob`
   frees BAT-01 and Ana, and BAT-01 is reserved for H22. Ends with
   `PASS: TL-11 follow-ups and release`.
+- **TL-15:** H17 confirms `powered_equipment` (a retry adds nothing) and the coordinator sees it
+  with dispatch need `battery` and "self-confirmed via preparedness profile". A second
+  confirmation, an unknown need ID and a reused confirmation ID are rejected and store nothing.
+  Resident H22, driver Ana and a session without a role read nothing, and the coordinator row has
+  no sources, signals or confidence. Skipped H22 has no row. Household rows are unchanged and
+  H17's numbers are still R4 +17, R4-ALT +6. `resetIncident` clears the confirmation. Ends with
+  `PASS: TL-15 confirmed need storage`.
 - **TL-18:** checks the display labels and that the seed clock and every `freeAt` are now. Plays
   H17's story live (R4 +17, R4-ALT +6, then R4 -3 after the detour; server ETA = reserve time +
   24 min). It builds up state in every lead-incident table, confirms a coordinator and an
@@ -122,7 +130,7 @@ await conn.reducers.claimInvite({ code }); // binds this session's identity to t
 | `coordinator` | `''` | `ingestCheckin`, `confirmRouteReport`, `reserve`, `openCheckinRound`, `claimFollowup`, `releaseJob` | `coordinator_*` and `job_messages` for its incident |
 | `driver` | driver ID | `postJobMessage`, `updateJob` (`arrived`) on its jobs | `driver_jobs`, `job_messages`: its own jobs only |
 | `bridge` | `''` | `ingestCheckin` | `bridge_outbox` and `bridge_checkins` (receipts) for its incident |
-| `resident` | household ID | `postJobMessage`, `updateJob` (`delivered`) on its jobs; `enrollPreparedness`, `requestAgentContact`, `skipAgentContact` | `resident_jobs`, `job_messages`, `my_profile`, `my_agent_request`, `my_agent_decline`: its own household only |
+| `resident` | household ID | `postJobMessage`, `updateJob` (`delivered`) on its jobs; `enrollPreparedness`, `requestAgentContact`, `skipAgentContact`, `confirmSuggestedNeed` | `resident_jobs`, `job_messages`, `my_profile`, `my_agent_request`, `my_agent_decline`, `my_confirmed_need`: its own household only |
 
 A driver or resident invite is rejected unless that driver or household belongs to the invite's
 incident. Invite codes are single-use but do not expire; share them privately.
@@ -355,6 +363,28 @@ conn.reducers.skipAgentContact({});
 - **Counting:** skips never change `agentOptIns`. A skip does not require a delivered job.
 - **Equal access:** `reserve`, `ingestCheckin` and the coordinator household rows never read
   profiles or leads, so opting in or skipping cannot change who gets help or how fast.
+
+**`confirmSuggestedNeed`** (TL-15, D -> A; the household's resident):
+
+```ts
+// Confirm or Correct: send the kept suggestion's id (C's NeedSuggestion['id']).
+// confirmationId is stable per click, so a retry is a no-op. Skip: send nothing.
+conn.reducers.confirmSuggestedNeed({ confirmationId: crypto.randomUUID(), needId: 'powered_equipment' });
+```
+
+- **Success:** one private `confirmed_need` row for the household: `needId`, `dispatchNeed`
+  (derived by the server: `powered_equipment` -> `battery`, `step_free_access` -> none) and
+  `confirmedAt`. Nothing about the policy (sources, signals, confidence) is sent or stored.
+- **Duplicate:** the same `confirmationId` again is a no-op.
+- **Errors:** `unknown needId <id>`; `conflict: H17 already confirmed powered_equipment` (one
+  per household); `conflict: confirmationId already used`; `forbidden: requires a resident session`.
+- **Independent of TL-09:** it does not need or change a profile, and `enrollPreparedness` is
+  unchanged. A registration screen calls `enrollPreparedness`, then this for a kept need.
+- **Views:** `my_confirmed_need` (the resident's own row) and `coordinator_confirmed_needs`
+  (`householdId`, `needId`, `dispatchNeed`, `label` = "self-confirmed via preparedness profile",
+  `confirmedAt`). Drivers and other residents see nothing.
+- **Equal access:** dispatch never reads it, and `household.need` is unchanged, so confirming or
+  skipping cannot change who gets help or how fast. `resetIncident` clears it.
 
 **Check-in rounds and silent follow-ups** (TL-11):
 
