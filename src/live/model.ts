@@ -31,8 +31,10 @@ type HouseholdRow = {
 };
 type RouteRow = Legs & { id: string; householdId: string; driverId: string; assetId: string };
 type FreeRow = { id: string; freeAt: Timestamp; activeJobId?: bigint };
+type AssetRow = FreeRow & { kind: string };
 
-export type LiveOption = { route: RouteRow; ready: number; margin: number | null; busy: boolean };
+// blocked says why an option can't be reserved right now; null means it can.
+export type LiveOption = { route: RouteRow; ready: number; margin: number | null; blocked: string | null };
 export type LiveCase = {
   lane: Lane;
   observed: number | null;
@@ -42,7 +44,7 @@ export type LiveCase = {
 };
 
 // margin = earliest time backup may run out - when help can be there, in whole minutes.
-export function evaluateHousehold(h: HouseholdRow, routes: readonly RouteRow[], drivers: readonly FreeRow[], assets: readonly FreeRow[], now: number): LiveCase {
+export function evaluateHousehold(h: HouseholdRow, routes: readonly RouteRow[], drivers: readonly FreeRow[], assets: readonly AssetRow[], now: number): LiveCase {
   const observed = h.lastObservedAt ? ms(h.lastObservedAt) : null;
   const lo = h.runtimeLowerMin;
   const hi = h.runtimeUpperMin;
@@ -59,11 +61,18 @@ export function evaluateHousehold(h: HouseholdRow, routes: readonly RouteRow[], 
         route: r,
         ready,
         margin: window ? Math.floor((window[0] - ready) / MIN) : null,
-        busy: d?.activeJobId !== undefined || a?.activeJobId !== undefined,
+        // A missing driver or asset, or the wrong kind of asset, is never offered as free.
+        blocked:
+          !d ? 'driver not found'
+          : !a ? 'asset not found'
+          : a.kind !== h.need ? `${a.kind}, not ${h.need}`
+          : d.activeJobId !== undefined || a.activeJobId !== undefined ? 'busy'
+          : null,
       };
     });
   // With a runtime, rank by margin; without one, the earliest arrival is the best we know.
-  const free = options.filter((o) => !o.busy);
+  // Known runtime with no free option stays Act now: uncovered work must surface (team spec, lanes).
+  const free = options.filter((o) => o.blocked === null);
   const ranked = window ? free.sort((x, y) => y.margin! - x.margin!) : free.sort((x, y) => x.ready - y.ready);
   const best = ranked[0];
 

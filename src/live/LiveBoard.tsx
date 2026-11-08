@@ -109,7 +109,7 @@ export function LiveBoard() {
                       <span className="sub">{titleCase(h.need)}</span>
                     </td>
                     <td className="report">{last ? `“${last.text}”` : 'No check-in yet'}</td>
-                    <td>{job ? `${job.assetId}, ${titleCase(job.driverId)}, ${job.status}` : c.best ? `${c.best.route.assetId}, ${titleCase(c.best.route.driverId)}, ${c.best.route.id}` : '—'}</td>
+                    <td>{job ? `${job.assetId}, ${titleCase(job.driverId)}, ${job.status}` : c.best ? `${c.best.route.assetId}, ${titleCase(c.best.route.driverId)}, ${c.best.route.id}` : c.lane === 'act' ? 'No free option' : '—'}</td>
                     <td className={`num margin ${c.best?.margin != null && c.best.margin < 15 && !job ? 'tight' : ''}`}>{job ? '—' : marginText(c.best?.margin)}</td>
                     <td><LanePill lane={c.lane} /></td>
                   </tr>
@@ -249,13 +249,13 @@ function LiveDrawer({ h, c, incidentId, onClose }: { h: HouseholdRow; c: LiveCas
           <div className="routes" role="radiogroup" aria-label="Route">
             {c.options.map((o) => (
               <label key={o.route.id} className={`route ${o === chosen ? 'on' : ''} ${o.margin !== null && o.margin < 0 ? 'late' : ''}`}>
-                <input type="radio" name="route" checked={o === chosen} onChange={() => setRouteId(o.route.id)} disabled={state.kind === 'sending' || o.busy} />
+                <input type="radio" name="route" checked={o === chosen} onChange={() => setRouteId(o.route.id)} disabled={state.kind === 'sending' || o.blocked !== null} />
                 <span className="route-head">
                   <b>{o.route.id}</b>
                   <span className="sub">
                     {o.route.assetId}, {titleCase(o.route.driverId)}, ready {hhmm(o.ready)}
                     {o.route.confirmedDelayMin ? `, +${o.route.confirmedDelayMin} min confirmed` : ''}
-                    {o.busy ? ', busy' : ''}
+                    {o.blocked ? `, ${o.blocked}` : ''}
                   </span>
                   <span className={`route-margin ${o.margin !== null && o.margin < 15 ? 'tight' : ''}`}>
                     {o.margin !== null && o.margin < 0 && <Icon name="alert" size={13} />}
@@ -278,7 +278,7 @@ function LiveDrawer({ h, c, incidentId, onClose }: { h: HouseholdRow; c: LiveCas
           </div>
           {delayErr && <p className="result result-conflict" role="alert"><Icon name="alert" size={15} /> {delayErr}</p>}
           {chosen && chosen.margin !== null && chosen.margin < 0 && <p className="warn-text"><Icon name="alert" size={14} /> {chosen.route.id} arrives after backup may run out.</p>}
-          <button className="btn btn-primary btn-block" onClick={doReserve} disabled={!chosen || chosen.busy || state.kind === 'sending'}>
+          <button className="btn btn-primary btn-block" onClick={doReserve} disabled={!chosen || chosen.blocked !== null || state.kind === 'sending'}>
             {state.kind === 'sending' ? 'Reserving…' : chosen ? `Reserve ${chosen.route.assetId} and send ${titleCase(chosen.route.driverId)} on ${chosen.route.id}` : 'No free option'}
           </button>
           {state.kind === 'error' && <p className="result result-conflict" role="alert"><Icon name="alert" size={15} /> {state.text}</p>}
