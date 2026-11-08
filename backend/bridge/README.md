@@ -88,13 +88,14 @@ records each send key as one of:
 | `ambiguous` | timeout, 408/502/504 or unreadable response; Photon may have sent it | not resent; check the phone, then edit the entry to reconcile |
 | `obsolete` | a newer version of the same job is in the view, or the row left the view | never sent |
 
-**Failed ETAs are not retried.** The bridge cannot read the private job table, and
-`bridge_outbox` still returns intents for jobs that have moved on (a status change bumps the job
-version but leaves the old row in the view). An automatic retry could therefore text "Ana is
-bringing a battery" after the battery was delivered. Until A's view returns only rows whose job is
-`assigned` at the matching version, a refused ETA is logged as `needs reconciliation` (key only, no
-phone numbers) and left for the coordinator. Records named `failed` in an older
-`.bridge-state.json` are treated the same way.
+**Failed ETAs are not retried (decision for the demo: safety over retry).** Since #25,
+`bridge_outbox` returns only intents whose job is `assigned` at the row's version, so an intent
+drops out of the view once the job moves on. A retry is still not safe: it would run after the
+failure, and the job can move on between the view update and the resend, which would text "Ana is
+bringing a battery" after the battery was delivered. A missed ETA costs less than a wrong one, and
+the coordinator can see it: a refused ETA is logged as `needs reconciliation` (key only, no phone
+numbers) and left for the coordinator to resend if the job is still current. Records named
+`failed` in an older `.bridge-state.json` are treated the same way.
 
 ## Checks
 

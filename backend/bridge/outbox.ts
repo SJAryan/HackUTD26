@@ -2,9 +2,10 @@
 // The outbox row stays 'pending' (no reducer marks it sent yet), so the bridge keeps its own
 // per-key send record in .bridge-state.json. Each key is sent at most once:
 // - accepted is never resent;
-// - failed (Photon refused it) becomes needs_reconciliation and is never auto-retried, because the
-//   bridge cannot see job status and the view does not yet filter stale intents, so a retry could
-//   deliver an ETA for a job that has already moved on;
+// - failed (Photon refused it) becomes needs_reconciliation and is never auto-retried. Since #25 the
+//   view only returns intents whose job is still assigned at the row's version, but a retry could
+//   still land after the job moves on, so for the demo we choose safety over retry: the coordinator
+//   sees the failed ETA and resends by hand (see README, TL-08);
 // - ambiguous (timeout or unreadable response) is held for reconciliation.
 // Only the newest intent per job that is still in the view is ever sent: an older job version is
 // obsolete for good, and a legacy failed record whose row left the view is obsolete.
