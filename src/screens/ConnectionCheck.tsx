@@ -1,6 +1,7 @@
-// TL-01 connection check (A), kept at #/connection to verify the live database.
-import { tables } from '../module_bindings';
-import { useSpacetimeDB, useTable } from 'spacetimedb/react';
+// TL-01/TL-05 connection check (A), kept at #/connection: live tables and role claiming.
+import { useState } from 'react';
+import { tables, reducers } from '../module_bindings';
+import { useReducer, useSpacetimeDB, useTable } from 'spacetimedb/react';
 
 const time = (t?: { toDate(): Date }) => (t ? t.toDate().toISOString() : 'unknown');
 const range = (lo?: number, hi?: number) =>
@@ -8,16 +9,38 @@ const range = (lo?: number, hi?: number) =>
 
 export function ConnectionCheck() {
   const { isActive: connected } = useSpacetimeDB();
-  const [households, ready] = useTable(tables.household);
-  const [checkins] = useTable(tables.checkin);
+  const [roles] = useTable(tables.myRole);
+  const [households, ready] = useTable(tables.coordinatorHouseholds);
+  const [checkins] = useTable(tables.coordinatorCheckins);
+  const claimInvite = useReducer(reducers.claimInvite);
+  const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+  const role = roles[0];
 
   return (
     <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
       <h1>Time Left · TL-01 connection check</h1>
       <p>
         Status: <strong>{connected ? 'Connected' : 'Disconnected'}</strong> ·{' '}
-        {ready ? 'Live subscription' : 'Waiting for data'} · Synthetic seed data
+        {ready ? 'Live subscription' : 'Waiting for data'} · Synthetic seed data ·{' '}
+        Role: <strong>{role ? `${role.role} ${role.subjectId}`.trim() : 'none'}</strong>
       </p>
+
+      {!role && (
+        <form
+          onSubmit={e => {
+            e.preventDefault();
+            setError('');
+            claimInvite({ code: code.trim() }).catch((err: Error) => setError(err.message));
+          }}
+        >
+          <input value={code} onChange={e => setCode(e.target.value)} placeholder="Invite code" />{' '}
+          <button type="submit" disabled={!connected || !code.trim()}>
+            Claim role
+          </button>{' '}
+          {error}
+        </form>
+      )}
 
       <h2>Households</h2>
       <ul>

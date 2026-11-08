@@ -10,7 +10,9 @@
     "stdb:generate": "spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb -y",
     "stdb:publish:local": "spacetime publish --server local --module-path spacetimedb time-left -y",
     "stdb:reset:local": "spacetime publish --server local --module-path spacetimedb time-left --delete-data=always -y",
-    "check:tl01": "tsx scripts/two-session-check.ts"
+    "check:tl01": "tsx scripts/two-session-check.ts",
+    "check:tl05": "tsx scripts/race-check.ts",
+    "check:tl06": "tsx scripts/chat-check.ts"
   },
   "dependencies": {
     "react": "^18.3.1",

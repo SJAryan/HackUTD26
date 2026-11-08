@@ -138,9 +138,13 @@ export function answerCall(pick: boolean) {
   set({ ...state, call: pick ? 'answered' : 'missed' });
 }
 
+// "Not sure" sends a follow-up and keeps the question open; the next answer replaces it.
+export const FOLLOW_UP_TEXT = 'Thanks. If you can, check the gauge on your backup tank or the display on your concentrator, then pick the closest answer.';
+export const pollOpen = (s: DemoState) => s.outage && !s.job && (!s.answer || s.answer === 'Not sure');
+
 export function answerPoll(answer: PollAnswer, via: 'iMessage' | 'Call') {
-  if (!state.outage || state.answer) return;
-  const clock = at(158);
+  if (!pollOpen(state)) return;
+  const clock = at(state.answer === 'Not sure' ? (state.answeredAt ?? 158) + 3 : 158);
   const e = evaluate(answer, clock, state.delayConfirmed);
   const window = e.window ? `${fmt(e.window[0])} to ${e.window[1] === null ? 'later' : fmt(e.window[1])}` : 'unknown';
   set({
@@ -151,10 +155,15 @@ export function answerPoll(answer: PollAnswer, via: 'iMessage' | 'Call') {
     answeredVia: via,
     call: via === 'Call' ? 'answered' : state.call === 'ringing' ? 'none' : state.call,
     caseVersion: state.caseVersion + 1,
-    messages: [...state.messages, { id: id(), from: 'resident', channel: via, at: clock, text: answer }],
+    messages: [
+      ...state.messages,
+      { id: id(), from: 'resident', channel: via, at: clock, text: answer },
+      ...(answer === 'Not sure' ? [{ id: id(), from: 'system' as const, channel: 'iMessage' as const, at: clock + 1, text: FOLLOW_UP_TEXT }] : []),
+    ],
     events: [
       ...state.events,
-      ev({ at: clock, kind: 'reply', who: `${DEMO_ID} by ${via}`, text: `“${answer}”. Backup runs out ${window}.` }),
+      ev({ at: clock, kind: 'reply', who: `${DEMO_ID} by ${via}`, text: answer === 'Not sure' ? '“Not sure”. Margin unknown.' : `“${answer}”. Backup runs out ${window}.` }),
+      ...(answer === 'Not sure' ? [ev({ at: clock + 1, kind: 'outreach', who: 'Photon', text: `Follow-up sent by iMessage. Maya owns this case, due ${fmt(clock + 6)}.` })] : []),
       ...(e.best ? [ev({ at: clock, kind: 'decision', who: 'Rules', text: `Best option ${e.best.routeId}, ready ${fmt(e.best.readyAt)}, margin ${e.best.lo} min. Lane ${e.lane === 'act' ? 'Act now' : 'Watch'}.` })] : []),
     ],
   });
@@ -175,14 +184,22 @@ export function confirmDelay() {
   if (!state.delayReported || state.delayConfirmed) return;
   const clock = at(160);
   const e = state.answer && state.answeredAt !== null ? evaluate(state.answer, state.answeredAt, true) : null;
+  const job = state.job;
+  const moveJob = job && job.routeId === DELAY.routeId && (job.status === 'reserved' || job.status === 'en_route');
+  const newEta = moveJob ? job.eta + DELAY.minutes : 0;
   set({
     ...state,
     clock,
     delayConfirmed: true,
     caseVersion: state.caseVersion + 1,
+    job: moveJob ? { ...job, eta: newEta, version: job.version + 1 } : job,
+    messages: moveJob
+      ? [...state.messages, { id: id(), from: 'system', channel: 'iMessage', at: clock, text: `Update: the road is slower than expected. ${job.driverId} now arrives about ${fmt(newEta)}.` }]
+      : state.messages,
     events: [
       ...state.events,
       ev({ at: clock, kind: 'decision', who: 'Coordinator', text: `Confirmed +${DELAY.minutes} min on ${DELAY.routeId}.` }),
+      ...(moveJob ? [ev({ at: clock, kind: 'dispatch', who: 'Rules', text: `${job.jobId} is on ${DELAY.routeId}. New arrival ${fmt(newEta)}. Resident told the new time.` })] : []),
       ...(e?.best ? [ev({ at: clock, kind: 'decision', who: 'Rules', text: `Recomputed. ${DELAY.routeId} is now ${e.options.find((o) => o.routeId === DELAY.routeId)!.lo} min. Best is ${e.best.routeId} at +${e.best.lo}. Lane ${e.lane === 'act' ? 'Act now' : 'Watch'}.` })] : []),
     ],
   });

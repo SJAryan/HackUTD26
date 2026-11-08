@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { POLL_ANSWERS, fmt } from '../demo/fixture';
-import { answerCall, answerPoll, postMessage, updateJob, useDemo } from '../demo/store';
+import { answerCall, answerPoll, pollOpen, postMessage, updateJob, useDemo } from '../demo/store';
 import { Icon } from '../ui/icons';
 
 // Simulated resident phone. Live iMessage polls and calls come from Photon (B).
@@ -8,7 +8,7 @@ export function ResidentPhone() {
   const s = useDemo();
   const [draft, setDraft] = useState('');
   const thread = s.messages;
-  const pollOpen = s.outage && !s.answer;
+  const onCall = s.call === 'answered' && !s.answer;
   const name = s.registration?.name.split(' ')[0] ?? 'Resident';
 
   return (
@@ -31,7 +31,7 @@ export function ResidentPhone() {
           </div>
         )}
 
-        {s.call === 'answered' && !s.answer && (
+        {onCall && (
           <div className="call" role="dialog" aria-label="Call in progress">
             <h2>How much oxygen backup is left?</h2>
             <p>Before Zero call in progress. Press the key that matches.</p>
@@ -61,7 +61,7 @@ export function ResidentPhone() {
               <time>{m.channel === 'Call' ? 'by call' : fmt(m.at)}</time>
             </div>
           ))}
-          {pollOpen && s.call !== 'answered' && (
+          {pollOpen(s) && !onCall && (
             <div className="poll" role="group" aria-label="Reply to the check-in">
               {POLL_ANSWERS.map((a) => (
                 <button key={a} onClick={() => answerPoll(a, 'iMessage')}>{a}</button>

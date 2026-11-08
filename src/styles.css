@@ -397,3 +397,6 @@ form .fixture-note { padding: 0; }
   .topbar .reset .btn-label { display: none; }
   .topbar h1 { margin-right: 0; }
 }
+
+.choice.off { opacity: 0.5; cursor: not-allowed; }
+.field > small { margin-top: 2px; }

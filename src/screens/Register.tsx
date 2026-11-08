@@ -3,6 +3,9 @@ import { DEMO_ID, NEED_LABEL, type Need } from '../demo/fixture';
 import { register, useDemo, type Registration } from '../demo/store';
 import { Icon } from '../ui/icons';
 
+// Only needs with a working check-in and dispatch flow can be chosen.
+const READY: Need[] = ['oxygen'];
+
 // Synthetic demo resident. Real people never appear in this app's data.
 const DEFAULTS: Registration = {
   name: 'Alma Reyes',
@@ -16,7 +19,7 @@ const DEFAULTS: Registration = {
 
 export function Register({ go }: { go: (route: string) => void }) {
   const s = useDemo();
-  const [f, setF] = useState<Registration>(s.registration ?? DEFAULTS);
+  const [f, setF] = useState<Registration>(s.registration && READY.includes(s.registration.need) ? s.registration : DEFAULTS);
   const [consent, setConsent] = useState(true);
   const set = (k: keyof Registration) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
 
@@ -79,12 +82,13 @@ export function Register({ go }: { go: (route: string) => void }) {
           <legend>What depends on power</legend>
           <div className="choices">
             {(Object.keys(NEED_LABEL) as Need[]).map((n) => (
-              <label key={n} className={`choice ${f.need === n ? 'on' : ''}`}>
-                <input type="radio" name="need" checked={f.need === n} onChange={() => setF({ ...f, need: n })} />
+              <label key={n} className={`choice ${f.need === n ? 'on' : ''} ${READY.includes(n) ? '' : 'off'}`}>
+                <input type="radio" name="need" checked={f.need === n} disabled={!READY.includes(n)} onChange={() => setF({ ...f, need: n })} />
                 {NEED_LABEL[n]}
               </label>
             ))}
           </div>
+          <small>Dialysis and no-heat check-ins are not in this demo yet. Only home oxygen runs end to end.</small>
         </fieldset>
         <label className="field">
           <span>Equipment and backup</span>
