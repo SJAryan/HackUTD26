@@ -10,6 +10,26 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const AgentContact = __t.object("AgentContact", {
+  id: __t.u64(),
+  consentId: __t.string(),
+  householdId: __t.string(),
+  incidentId: __t.string(),
+  identity: __t.identity(),
+  jobId: __t.u64(),
+  preferredContact: __t.string(),
+  consentedAt: __t.timestamp(),
+});
+export type AgentContact = __Infer<typeof AgentContact>;
+
+export const AgentDecline = __t.object("AgentDecline", {
+  householdId: __t.string(),
+  incidentId: __t.string(),
+  identity: __t.identity(),
+  declinedAt: __t.timestamp(),
+});
+export type AgentDecline = __Infer<typeof AgentDecline>;
+
 export const Asset = __t.object("Asset", {
   id: __t.string(),
   incidentId: __t.string(),
@@ -57,6 +77,12 @@ export type CoordinatorHouseholds = __Infer<typeof CoordinatorHouseholds>;
 
 export const CoordinatorJobs = __t.object("CoordinatorJobs", {});
 export type CoordinatorJobs = __Infer<typeof CoordinatorJobs>;
+
+export const CoordinatorProfiles = __t.object("CoordinatorProfiles", {});
+export type CoordinatorProfiles = __Infer<typeof CoordinatorProfiles>;
+
+export const CoordinatorRegistryStats = __t.object("CoordinatorRegistryStats", {});
+export type CoordinatorRegistryStats = __Infer<typeof CoordinatorRegistryStats>;
 
 export const CoordinatorRoutes = __t.object("CoordinatorRoutes", {});
 export type CoordinatorRoutes = __Infer<typeof CoordinatorRoutes>;
@@ -146,8 +172,17 @@ export const Member = __t.object("Member", {
 });
 export type Member = __Infer<typeof Member>;
 
+export const MyAgentDecline = __t.object("MyAgentDecline", {});
+export type MyAgentDecline = __Infer<typeof MyAgentDecline>;
+
+export const MyAgentRequest = __t.object("MyAgentRequest", {});
+export type MyAgentRequest = __Infer<typeof MyAgentRequest>;
+
 export const MyIncident = __t.object("MyIncident", {});
 export type MyIncident = __Infer<typeof MyIncident>;
+
+export const MyProfile = __t.object("MyProfile", {});
+export type MyProfile = __Infer<typeof MyProfile>;
 
 export const MyRole = __t.object("MyRole", {});
 export type MyRole = __Infer<typeof MyRole>;
@@ -164,6 +199,26 @@ export const Outbox = __t.object("Outbox", {
   createdAt: __t.timestamp(),
 });
 export type Outbox = __Infer<typeof Outbox>;
+
+export const Profile = __t.object("Profile", {
+  householdId: __t.string(),
+  enrollmentId: __t.string(),
+  incidentId: __t.string(),
+  identity: __t.identity(),
+  medicalNeed: __t.string(),
+  backupDevice: __t.string(),
+  address: __t.string(),
+  preferredContact: __t.string(),
+  enrolledAt: __t.timestamp(),
+});
+export type Profile = __Infer<typeof Profile>;
+
+export const RegistryStats = __t.object("RegistryStats", {
+  incidentId: __t.string(),
+  registrations: __t.u32(),
+  agentOptIns: __t.u32(),
+});
+export type RegistryStats = __Infer<typeof RegistryStats>;
 
 export const ResidentJobs = __t.object("ResidentJobs", {});
 export type ResidentJobs = __Infer<typeof ResidentJobs>;
