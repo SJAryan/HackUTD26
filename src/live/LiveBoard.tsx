@@ -32,6 +32,8 @@ export function LiveBoard() {
   const [checkins] = useTable(tables.coordinatorCheckins);
   const [incidents] = useTable(tables.myIncident);
   const incident = incidents[0];
+  const [stats] = useTable(tables.coordinatorRegistryStats);
+  const registry = stats.find((r) => r.incidentId === incident?.id);
   const [selected, setSelected] = useState<string | null>(null);
 
   const rows = useMemo(
@@ -66,6 +68,8 @@ export function LiveBoard() {
           <div>
             <h2>{incident ? incident.name : 'Live incident'}</h2>
             <p>Live data from SpacetimeDB. Margins use the real clock and the dispatch rules on the server.</p>
+            {/* Counted separately on the server; the coordinator never sees who asked for an agent. */}
+            {registry && <p className="sub">{registry.registrations} registered before the outage. {registry.agentOptIns} asked for a State Farm agent after help arrived.</p>}
           </div>
         </section>
 

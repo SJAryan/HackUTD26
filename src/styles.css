@@ -442,3 +442,4 @@ form .fixture-note { padding: 0; }
 .record { display: flex; flex-direction: column; gap: 6px; }
 .record-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .btn-sm { height: 30px; padding: 0 10px; font-size: 12.5px; }
+.live-offer { padding: 12px 14px 0; }

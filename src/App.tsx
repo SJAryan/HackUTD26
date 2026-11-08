@@ -13,6 +13,7 @@ import { setMode, useMode } from './live/mode';
 import { RoleGate, roleText, useMyRole } from './live/RoleGate';
 import { LiveBoard, useNow } from './live/LiveBoard';
 import { LivePhone } from './live/LivePhone';
+import { LiveRegister } from './live/LiveConsent';
 import { hhmm } from './live/model';
 import './styles.css';
 
@@ -147,12 +148,8 @@ export default function App() {
           {live && route === 'board' && <RoleGate want="coordinator"><LiveBoard /></RoleGate>}
           {live && route === 'resident' && <RoleGate want="resident"><LivePhone as="resident" /></RoleGate>}
           {live && route === 'driver' && <RoleGate want="driver"><LivePhone as="driver" /></RoleGate>}
-          {route === 'register' && (
-            <>
-              {live && <p className="callout live-callout">Enrollment is not live yet: it waits on A's TL-09 reducer. This page still uses fixture data.</p>}
-              <Register go={go} />
-            </>
-          )}
+          {!live && route === 'register' && <Register go={go} />}
+          {live && route === 'register' && <RoleGate want="resident"><LiveRegister go={go} /></RoleGate>}
           {route === 'connection' && <ConnectionCheck />}
         </main>
       </div>
