@@ -131,11 +131,15 @@ export function LivePhone({ as }: { as: 'driver' | 'resident' }) {
             <section className="live-job">
               <h2>
                 {as === 'driver'
-                  ? `${job.householdId}: deliver ${job.assetId}`
+                  ? job.status === 'delivered' ? `Job ${String(job.id)} done: ${job.assetId} delivered to ${job.householdId}` : `${job.householdId}: deliver ${job.assetId}`
                   : job.status === 'delivered' ? `${driver} brought ${job.assetId}` : `${driver} is bringing ${job.assetId}`}
               </h2>
               <p className="sub">
-                {job.status === 'delivered' ? 'Delivered and confirmed.' : `Arriving about ${hhmm(ms(job.etaAt))} on ${job.routeId}.`} Job {String(job.id)}, {job.status}.
+                {job.status !== 'delivered'
+                  ? `Arriving about ${hhmm(ms(job.etaAt))} on ${job.routeId}. Job ${String(job.id)}, ${job.status}.`
+                  : as === 'driver'
+                    ? 'The resident confirmed delivery. Your next job appears here as soon as a coordinator assigns it.'
+                    : `Delivered and confirmed. Job ${String(job.id)}.`}
               </p>
               {job.status === step.from && (
                 <button className={`btn btn-block ${as === 'driver' ? 'btn-primary' : 'btn-accept'}`} onClick={advance} disabled={status.kind === 'sending'}>
