@@ -1,4 +1,4 @@
-# Time Left: setup and shared contract (TL-01)
+# Time Left: setup and shared contract (TL-01, TL-05)
 
 Owner: A (backend and integration). Scaffolded with `spacetime init --template react-ts`.
 All data in the seed is synthetic.
@@ -15,10 +15,10 @@ All data in the seed is synthetic.
 
 | Path | Owner | Contents |
 |---|---|---|
-| `spacetimedb/src/` | A | Schema, reducers and seed (`index.ts`) |
+| `spacetimedb/src/` | A | Schema, reducers, views and seed (`index.ts`); `rules.ts` fixture adapter |
 | `spacetimedb/src/domain/` | C | Pure dispatch rules, imported by A (TL-03/TL-05) |
 | `src/module_bindings/` | A | Generated; never edit by hand. Run `npm run stdb:generate` |
-| `src/` (everything else) | D | React client. `src/App.tsx` is a TL-01 connection check D replaces |
+| `src/` (everything else) | D | React client. `src/App.tsx` is a connection check D replaces |
 | `bridge/` | B | Photon bridge (not created yet) |
 | `fixtures/`, `sim/` | C | Fixtures and simulator (not created yet) |
 | `scripts/` | A | Integration checks |
@@ -45,34 +45,82 @@ npm run stdb:reset:local
 
 Always use the npm scripts or pass `--server local`. `spacetime.json` defaults to Maincloud.
 
-## TL-01 acceptance check
+## Acceptance checks
+
+Each check needs a freshly reset database and runs owner-only invite calls through your CLI
+identity, so run them as the identity that published the module.
 
 ```bash
 npm run stdb:reset:local && npm run check:tl01
+npm run stdb:reset:local && npm run check:tl05
 ```
 
-Two independent sessions (distinct identities) subscribe to `incident`, `household` and `checkin`.
-Session A records H17's 02:00 check-in. Session B must see H17 change through its subscription.
-The script also replays the same event ID (no new effect) and sends an unknown household
-(rejected). It ends with `PASS: TL-01 two-session subscription check`. To point it at another
-server, set `SPACETIMEDB_HOST` and `SPACETIMEDB_DB_NAME`.
+- **TL-01:** a bridge session records H17's 02:00 check-in; a coordinator session sees H17 change
+  through its view. A replayed event ID has no effect, an unknown household is rejected, and a
+  session without a role is refused and reads nothing. Ends with
+  `PASS: TL-01 two-session subscription check`.
+- **TL-05:** two coordinators race for BAT-01 for H17 (via R4-ALT, Ana) and H22 (via R7, Ben).
+  Exactly one commits; the other gets `conflict: BAT-01 is reserved by job 1`. There is one job,
+  two notification intents for that job only, and only the assigned driver sees it. It also
+  checks a stale `expectedVersion`, a duplicate detour report and a replayed `jobRequestId`.
+  `RACE_REVERSE=1` sends coordinator 2's call first. Ends with `PASS: TL-05 last-battery race`.
+
+To point a check at another server, set `SPACETIMEDB_HOST`, `SPACETIMEDB_DB_NAME` and
+`SPACETIMEDB_SERVER` (the CLI nickname, e.g. `maincloud`).
+
+## Roles
+
+Every session starts with no role and sees nothing. The module owner (the identity that
+published it) creates single-use invite codes; a session claims one to get its role.
+
+```bash
+# Owner only. Make up a code and share it privately; never commit it.
+spacetime call --server local time-left create_invite '"<code>"' '"coordinator"' '"tornado-1"' '""'
+spacetime call --server local time-left create_invite '"<code>"' '"driver"' '"tornado-1"' '"ana"'
+spacetime call --server local time-left create_invite '"<code>"' '"bridge"' '"tornado-1"' '""'
+```
+
+```ts
+await conn.reducers.claimInvite({ code }); // binds this session's identity to the role
+```
+
+| Role | `subjectId` | Can call | Can read (views) |
+|---|---|---|---|
+| `coordinator` | `''` | `ingestCheckin`, `confirmRouteReport`, `reserve` | `coordinator_*` for its incident |
+| `driver` | driver ID | nothing yet (TL-06) | `driver_jobs`: its own jobs only |
+| `bridge` | `''` | `ingestCheckin` | `bridge_outbox` for its incident |
+| `resident` | household ID | nothing yet (TL-06/TL-09) | nothing yet |
+
+Every session can read `my_role` and `my_incident`. The browser keeps its identity token in
+`localStorage`, so a role survives reloads; use a private window for a second identity.
 
 ## Seed: tornado incident
 
 | Table | Rows |
 |---|---|
 | `incident` | `tornado-1`, kind `tornado`, clock 2026-11-08 02:00 America/Chicago (08:00 UTC) |
-| `household` | `H17`; `H22` (silent placeholder; C may rename it in the TL-03 fixture) |
-| `asset` | `BAT-01`, battery, available |
-| `driver` | `ana` (Ana), available |
+| `household` | `H17`, `H22` (silent), both need `battery` |
+| `asset` | `BAT-01`, battery, free at the incident clock |
+| `driver` | `ana` (Ana), `ben` (Ben), free at the incident clock |
+| `route` | `R4` H17/Ana/BAT-01, ready 02:13; `R4-ALT` H17/Ana/BAT-01, ready 02:24; `R7` H22/Ben/BAT-01, ready 02:19 |
 
-The freeze incident is not seeded yet; C's TL-03 fixture defines it.
+H17, R4 and R4-ALT match C's TL-03 tornado fixture. R7 and Ben are A's race seed until C's
+fixture covers H22. The freeze incident is not seeded yet.
 
 ## Interfaces available now
 
 Use the generated bindings: `import { DbConnection, tables, reducers } from './module_bindings'`.
 
-**`ingestCheckin`** (B -> A, live locally):
+All tables are private. Clients subscribe to views: `tables.myRole`, `tables.myIncident`,
+`tables.coordinatorHouseholds`, `tables.coordinatorCheckins`, `tables.coordinatorAssets`,
+`tables.coordinatorDrivers`, `tables.coordinatorRoutes`, `tables.coordinatorJobs`,
+`tables.driverJobs` and `tables.bridgeOutbox`. A view change can arrive as a delete plus an
+insert, so read the current rows rather than relying on `onUpdate`.
+
+Errors reject the reducer promise with a message. Messages starting `conflict:` mean someone
+else's change won; `forbidden:` means the session's role does not allow the call.
+
+**`ingestCheckin`** (B -> A; bridge or coordinator):
 
 ```ts
 conn.reducers.ingestCheckin({
@@ -91,24 +139,68 @@ conn.reducers.ingestCheckin({
 - **Errors:** an unknown household or incident mismatch is rejected; lower > upper is rejected.
 - **Older report:** kept in `checkin`, but does not overwrite newer household evidence.
 
-Not built yet: roles and authorization, private tables and views, `reserve`, `postJobMessage`,
-`updateJob` and `requestAgentContact`. These come in TL-05 and TL-06. All tables are public for
-TL-01; TL-05 moves case data behind scoped views.
+**`confirmRouteReport`** (coordinator):
 
-## Maincloud (not done yet)
-
-Publishing to Maincloud is a separate step for A, using the booth access code (kept out of the
-repo):
-
-```bash
-spacetime publish --server maincloud --module-path spacetimedb <shared-db-name>
+```ts
+conn.reducers.confirmRouteReport({ reportId: 'rep-r4-detour', incidentId: 'tornado-1', routeId: 'R4', delayMin: 20 });
 ```
 
-Then teammates set `VITE_SPACETIMEDB_HOST=wss://maincloud.spacetimedb.com` and the shared name
-in `.env.local`.
+Sets the route's `confirmedDelayMin`. A repeated `reportId` is a no-op, and the delay replaces
+the previous one instead of adding to it.
+
+**`reserve`** (D -> A; coordinator):
+
+```ts
+conn.reducers.reserve({
+  jobRequestId: crypto.randomUUID(), // stable per click; retry with the same ID
+  caseId: 'H17',
+  routeId: 'R4-ALT',                 // added to the agreed contract: picks the travel legs
+  assetId: 'BAT-01',
+  driverId: 'ana',
+  expectedVersion: 1,                // household.version from the coordinator's view
+});
+```
+
+- **Success:** in one transaction, a `job` is created (`version` 1, `status` `assigned`, `etaAt`
+  from the dispatch rules). The household, asset and driver are marked with `activeJobId`, the
+  household `version` increments, and two `outbox` intents are written: `eta` to the household
+  and `assignment` to the driver.
+- **Duplicate:** the same `jobRequestId` again is a no-op.
+- **Conflict:** stale `expectedVersion`, or the household, asset or driver already has a job.
+  Nothing is written.
+- **Rejected:** wrong role, unknown IDs, a route that does not join the case, asset and driver,
+  or an asset of the wrong kind.
+
+**Outbox intents** (A -> B), read through `bridge_outbox`. Each has a unique
+`key` (`job:<id>:v<version>:<recipient>:<purpose>`), `recipient` (`household:H17` or
+`driver:ana`), `purpose`, a plain-text `body` and `status` `pending`. Marking an intent sent comes
+with TL-08.
+
+Not built yet: releasing an asset or driver, `updateJob` and `postJobMessage` (TL-06),
+`requestAgentContact` (TL-09), callback ownership and scheduled follow-up (TL-11), and the
+resident view.
+
+**Dispatch rules:** `spacetimedb/src/rules.ts` copies `readyAt` from C's unmerged TL-03 branch as
+a fixture. Once TL-03 is on main, its body becomes a re-export of
+`./domain/dispatch`.
+
+## Maincloud
+
+The shared database is `time-left-hackutd26`. Teammates set
+`VITE_SPACETIMEDB_HOST=wss://maincloud.spacetimedb.com` and
+`VITE_SPACETIMEDB_DB_NAME=time-left-hackutd26` in `.env.local`.
+
+TL-05 changes the schema incompatibly (tables become private, columns are added), so A
+republishes with its data cleared, which reruns the seed:
+
+```bash
+spacetime publish --server maincloud --module-path spacetimedb time-left-hackutd26 --delete-data=always
+```
+
+The publishing identity becomes the owner who creates invites on Maincloud.
 
 ## Known issues
 
 - On a Windows laptop with Smart App Control or another Application Control policy, `vite`
   cannot load Rollup's native binary (`rollup.win32-x64-msvc.node`). The module, bindings and
-  `check:tl01` still work; `npm run dev` and `npm run build` fail on that machine.
+  checks still work; `npm run dev` and `npm run build` fail on that machine.

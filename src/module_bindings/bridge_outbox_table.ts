@@ -11,8 +11,13 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  id: __t.string().primaryKey(),
+  key: __t.string().primaryKey(),
   incidentId: __t.string().name("incident_id"),
-  kind: __t.string(),
+  jobId: __t.u64().name("job_id"),
+  jobVersion: __t.u32().name("job_version"),
+  recipient: __t.string(),
+  purpose: __t.string(),
+  body: __t.string(),
   status: __t.string(),
+  createdAt: __t.timestamp().name("created_at"),
 });
