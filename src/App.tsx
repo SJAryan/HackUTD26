@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useSpacetimeDB } from 'spacetimedb/react';
+import { useSpacetimeDB, useTable } from 'spacetimedb/react';
+import { tables } from './module_bindings';
 import { INCIDENT, fmt } from './demo/fixture';
 import { AUTO_CALL_MS, placeCall, reset, useDemo } from './demo/store';
 import { Icon, type IconName } from './ui/icons';
@@ -8,6 +9,11 @@ import { Register } from './screens/Register';
 import { ResidentPhone } from './screens/ResidentPhone';
 import { DriverPhone } from './screens/DriverPhone';
 import { ConnectionCheck } from './screens/ConnectionCheck';
+import { setMode, useMode } from './live/mode';
+import { RoleGate, roleText, useMyRole } from './live/RoleGate';
+import { LiveBoard, useNow } from './live/LiveBoard';
+import { LivePhone } from './live/LivePhone';
+import { hhmm } from './live/model';
 import './styles.css';
 
 type Route = 'board' | 'register' | 'resident' | 'driver' | 'connection';
@@ -68,9 +74,15 @@ export default function App() {
   const [route, go] = useRoute();
   const s = useDemo();
   const { isActive } = useSpacetimeDB();
+  const mode = useMode();
+  const live = mode === 'live';
+  const { role } = useMyRole();
+  const [incidents] = useTable(tables.myIncident);
+  const incident = incidents[0];
+  const now = useNow(30_000);
 
   // Automated call when the poll gets no reply. placeCall ignores repeats, so open tabs can't double-call.
-  const waiting = s.outage && !s.answer && s.call === 'none';
+  const waiting = !live && s.outage && !s.answer && s.call === 'none';
   useEffect(() => {
     if (!waiting) return;
     const t = setTimeout(() => placeCall('auto'), AUTO_CALL_MS);
@@ -94,22 +106,29 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <div className="rail-foot">
-          <h2>Demo run</h2>
-          <Steps />
-        </div>
+        {!live && (
+          <div className="rail-foot">
+            <h2>Demo run</h2>
+            <Steps />
+          </div>
+        )}
       </nav>
 
       <div className="main">
         <header className="topbar">
-          <h1>{TITLE[route]}</h1>
-          <span className="clock" aria-label="Simulated clock">
+          <h1>{live && route === 'board' ? incident?.name ?? 'Live incident' : TITLE[route]}</h1>
+          <span className="clock" aria-label={live ? 'Local time, Central' : 'Simulated clock'}>
             <Icon name="clock" size={15} />
-            {fmt(s.clock)}
+            {live ? hhmm(now) : fmt(s.clock)}
           </span>
-          <span className="chip" title="Screens read local fixture data until the live tables are wired in TL-07">Fixture data</span>
-          <a className={`chip ${isActive ? 'chip-live' : ''}`} href="#/connection">{isActive ? 'Database connected' : 'Database offline'}</a>
-          <button
+          <div className="mode" role="group" aria-label="Data source">
+            <button aria-pressed={!live} className={!live ? 'on' : ''} onClick={() => setMode('fixture')}>Fixture</button>
+            <button aria-pressed={live} className={live ? 'on' : ''} onClick={() => setMode('live')}>Live</button>
+          </div>
+          <a className={`chip ${isActive ? 'chip-live' : ''}`} href="#/connection">
+            {!isActive ? 'Database offline' : live ? roleText(role) : 'Database connected'}
+          </a>
+          {!live && <button
             className="btn btn-quiet reset"
             aria-label="Reset demo"
             onClick={() => {
@@ -118,14 +137,22 @@ export default function App() {
             }}
           >
             <Icon name="reset" size={15} /> <span className="btn-label">Reset demo</span>
-          </button>
+          </button>}
         </header>
 
         <main className={`view view-${route}`}>
-          {route === 'board' && <Board key={s.registration ? 'r' : 'n'} />}
-          {route === 'register' && <Register go={go} />}
-          {route === 'resident' && <ResidentPhone />}
-          {route === 'driver' && <DriverPhone />}
+          {!live && route === 'board' && <Board key={s.registration ? 'r' : 'n'} />}
+          {!live && route === 'resident' && <ResidentPhone />}
+          {!live && route === 'driver' && <DriverPhone />}
+          {live && route === 'board' && <RoleGate want="coordinator"><LiveBoard /></RoleGate>}
+          {live && route === 'resident' && <RoleGate want="resident"><LivePhone as="resident" /></RoleGate>}
+          {live && route === 'driver' && <RoleGate want="driver"><LivePhone as="driver" /></RoleGate>}
+          {route === 'register' && (
+            <>
+              {live && <p className="callout live-callout">Enrollment is not live yet: it waits on A's TL-09 reducer. This page still uses fixture data.</p>}
+              <Register go={go} />
+            </>
+          )}
           {route === 'connection' && <ConnectionCheck />}
         </main>
       </div>
