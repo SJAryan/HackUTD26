@@ -93,6 +93,11 @@ export function ownerSqlCount(query: string): number {
   return Math.max(0, rows.length - 2); // header and separator lines
 }
 
+// Owner-only reducer call through the CLI. Arguments are JSON-encoded. Throws the server's text.
+export function ownerCall(reducer: string, ...args: unknown[]): string {
+  return owner(['call', '--server', SERVER, DB, reducer, ...args.map(a => JSON.stringify(a))]);
+}
+
 function owner(args: string[]): string {
   try {
     return execFileSync('spacetime', args, { stdio: 'pipe', encoding: 'utf8' });
