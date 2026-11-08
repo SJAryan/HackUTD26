@@ -27,17 +27,22 @@ Pass: the phone receives `Hello from your Photon agent!` in the same thread.
 ## 2. Capture the H17 check-in
 
 ```sh
-npm run capture -- H17 tornado fixtures/h17-checkin.json
+npm run capture -- H17 tornado-1 captures/h17-checkin.json
 ```
 
 After `Ready`, the teammate sends in the same thread:
 
 > My backup shows 30–60 minutes left. Can the driver reach the side entrance?
 
-Pass: the file is written, contains neither real handle, and `event.eventId` is the
-Photon message ID. It refuses to overwrite an existing file. Review it before
-committing. `extracted` stays `null` until TL-08. `tornado` is a placeholder
-until C publishes the incident ID.
+Pass: the file is written, contains neither real handle in any format, and
+`event.eventId` is the Photon message ID. It refuses to overwrite an existing file
+and refuses to write if either identity's digits survive sanitizing. `captures/` is
+gitignored: raw captures stay on the capturing laptop and are never committed.
+`extracted` stays `null` until TL-08. `tornado-1` is A's seeded incident ID.
+
+The committed `fixtures/h17-checkin.json` is a **synthetic replay** modeled on a live
+capture, holding only the `event` that A (`ingestCheckin`) and D need. Replaying it
+is a replay, not a live integration.
 
 ## Checks
 

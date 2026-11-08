@@ -1,9 +1,11 @@
 // TL-02: capture the next real plain-text message from the test sender and save it
 // as a sanitized, replayable check-in event for A (ingestCheckin) and D (example).
-// Usage: node --env-file=.env capture.ts <householdBinding> <incidentId> <outFile>
+// Usage: node --env-file=.env capture.ts <householdBinding> <incidentId> captures/<file>.json
+// Raw captures stay under captures/ (gitignored); the committed fixture is a synthetic replay.
 // It does not reply; committed-state replies are TL-08.
-import { writeFileSync } from "node:fs";
-import { pathToFileURL } from "node:url";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 import { ApiError, Photon } from "@photon-ai/api";
 import { configuration } from "./agent.ts";
@@ -15,14 +17,50 @@ type Item = Page["items"][number];
 const SENDER = "<test-sender>";
 const AGENT = "<agent-line>";
 const PROJECT = "<project-id>";
+export const CAPTURES_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "captures");
+
+// Raw captures may only be written inside captures/, never into fixtures/ or elsewhere in the repo.
+export function captureTarget(outFile: string): string {
+  const target = resolve(outFile);
+  const rel = relative(CAPTURES_DIR, target);
+  if (!rel || rel.startsWith("..") || isAbsolute(rel)) {
+    throw new Error("Output must be inside captures/, e.g. captures/h17-checkin.json.");
+  }
+  return target;
+}
+
 const PERSONAL_KEYS = new Set(["name", "displayName", "firstName", "lastName", "email", "avatarUrl"]);
 
+const SEP = "[\\s.\\-()]*";
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// The 10 national digits of a NANP number ("+12145550101" -> "2145550101"); other numbers keep all digits.
+function phoneDigits(handle: string): string | undefined {
+  if (handle.includes("@")) return undefined;
+  const d = handle.replace(/\D/g, "");
+  if (d.length === 11 && d.startsWith("1")) return d.slice(1);
+  return d.length >= 7 ? d : undefined;
+}
+
+// Matches the identity however it is written: optional +1/1 prefix, any of space . - ( ) between digits.
+function identityPattern(handle: string): RegExp {
+  const d = phoneDigits(handle);
+  if (!d) return new RegExp(escape(handle), "gi");
+  const prefix = d.length === 10 ? `(?:\\+?1${SEP})?` : "\\+?";
+  return new RegExp(`(?<!\\d)${prefix}\\(?${[...d].join(SEP)}(?!\\d)`, "g");
+}
+
 export function sanitize(message: unknown, sender: string, agent: string, project?: string): any {
-  const pairs: [string, string][] = [[sender, SENDER], [agent, AGENT]];
-  if (project) pairs.push([project, PROJECT]);
-  for (const [real, mask] of [...pairs]) if (real.startsWith("+")) pairs.push([real.slice(1), mask]);
+  const identities: [string, string][] = [[sender, SENDER], [agent, AGENT]];
+  const rules: [RegExp, string][] = identities.map(([real, mask]) => [identityPattern(real), mask]);
+  if (project) rules.push([new RegExp(escape(project), "g"), PROJECT]);
+  const strings: string[] = [];
   const walk = (v: unknown): unknown => {
-    if (typeof v === "string") return pairs.reduce((s, [real, mask]) => s.split(real).join(mask), v);
+    if (typeof v === "string") {
+      const out = rules.reduce((s, [re, mask]) => s.replace(re, mask), v);
+      strings.push(out);
+      return out;
+    }
     if (Array.isArray(v)) return v.map(walk);
     if (v && typeof v === "object") {
       return Object.fromEntries(Object.entries(v).filter(([k]) => !PERSONAL_KEYS.has(k)).map(([k, x]) => [k, walk(x)]));
@@ -30,8 +68,16 @@ export function sanitize(message: unknown, sender: string, agent: string, projec
     return v;
   };
   const clean = walk(message);
-  const text = JSON.stringify(clean);
-  for (const [real] of pairs) if (text.includes(real)) throw new Error("Sanitizing failed; refusing to write.");
+  // Fail closed: no identity may survive in any form, even with every non-digit stripped.
+  for (const s of strings) {
+    for (const [real] of identities) {
+      const d = phoneDigits(real);
+      if (d ? s.replace(/\D/g, "").includes(d) : s.toLowerCase().includes(real.toLowerCase())) {
+        throw new Error("Sanitizing failed; refusing to write.");
+      }
+    }
+    if (project && s.includes(project)) throw new Error("Sanitizing failed; refusing to write.");
+  }
   return clean;
 }
 
@@ -93,8 +139,8 @@ async function capture(c: Config, householdBinding: string, incidentId: string, 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [householdBinding, incidentId, outFile] = process.argv.slice(2);
   try {
-    if (!householdBinding || !incidentId || !outFile) throw new Error("Usage: capture.ts <householdBinding> <incidentId> <outFile>");
-    await capture(configuration(), householdBinding, incidentId, outFile);
+    if (!householdBinding || !incidentId || !outFile) throw new Error("Usage: capture.ts <householdBinding> <incidentId> captures/<file>.json");
+    await capture(configuration(), householdBinding, incidentId, captureTarget(outFile));
   } catch (error) {
     if (error instanceof ApiError) console.error(`Photon API error ${error.status} (request ${error.requestId ?? "unknown"}).`);
     else console.error(error instanceof Error ? error.message : "Capture failed.");
