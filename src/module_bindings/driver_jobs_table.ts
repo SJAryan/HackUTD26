@@ -11,12 +11,16 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  id: __t.string().primaryKey(),
+  id: __t.u64().primaryKey(),
+  requestId: __t.string().name("request_id"),
   incidentId: __t.string().name("incident_id"),
-  label: __t.string(),
+  householdId: __t.string().name("household_id"),
+  routeId: __t.string().name("route_id"),
+  driverId: __t.string().name("driver_id"),
+  assetId: __t.string().name("asset_id"),
   version: __t.u32(),
-  runtimeLowerMin: __t.option(__t.u32()).name("runtime_lower_min"),
-  runtimeUpperMin: __t.option(__t.u32()).name("runtime_upper_min"),
-  lastObservedAt: __t.option(__t.timestamp()).name("last_observed_at"),
-  lastEventId: __t.option(__t.string()).name("last_event_id"),
+  status: __t.string(),
+  etaAt: __t.timestamp().name("eta_at"),
+  createdBy: __t.identity().name("created_by"),
+  createdAt: __t.timestamp().name("created_at"),
 });
