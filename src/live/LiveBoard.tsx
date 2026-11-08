@@ -175,19 +175,26 @@ function LiveDrawer({ h, c, incidentId, onClose }: { h: HouseholdRow; c: LiveCas
   };
 
   // A reply the resident gave on the automated call. Photon replies arrive the same way through B's bridge.
+  // One event per answer until it lands: a retry after a failed or lost reply reuses the same
+  // eventId and observedAt, so the server's dedupe sees the same check-in. Success clears it.
+  const pendingReplies = useRef(new Map<string, { eventId: string; observedAt: Timestamp }>());
   const recordReply = (p: (typeof POLL)[number]) => {
     if (replySending) return;
     setReplyErr(null);
     setReplySending(p.text);
+    const key = `${h.id}:${p.text}`;
+    if (!pendingReplies.current.has(key)) pendingReplies.current.set(key, { eventId: `call-${h.id}-${newId()}`, observedAt: Timestamp.now() });
+    const ev = pendingReplies.current.get(key)!;
     ingest({
-      eventId: `call-${h.id}-${newId()}`,
+      eventId: ev.eventId,
       incidentId,
       householdId: h.id,
-      observedAt: Timestamp.now(),
+      observedAt: ev.observedAt,
       text: p.text,
       runtimeLowerMin: p.lo,
       runtimeUpperMin: p.hi,
     })
+      .then(() => pendingReplies.current.delete(key))
       .catch((e: unknown) => setReplyErr(errorText(e)))
       .finally(() => setReplySending(null));
   };

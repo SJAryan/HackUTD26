@@ -14,7 +14,7 @@ export function useMyRole() {
 export const roleText = (r?: { role: string; subjectId: string }) =>
   r ? `${ROLE_LABEL[r.role] ?? r.role}${r.subjectId ? ` ${r.subjectId}` : ''}` : 'No role';
 
-// Each browser identity holds one role. A view only returns rows for the matching role,
+// Each screen has its own browser identity (see main.tsx), and each identity holds one role. A view only returns rows for the matching role,
 // so a screen renders its children only when this window has claimed that role.
 export function RoleGate({ want, children }: { want: 'coordinator' | 'driver' | 'resident'; children: ReactNode }) {
   const { isActive } = useSpacetimeDB();
@@ -40,7 +40,7 @@ export function RoleGate({ want, children }: { want: 'coordinator' | 'driver' | 
       <section className="gate">
         <Icon name="person" size={22} />
         <h2>This window is signed in as {roleText(role)}</h2>
-        <p>Each window holds one role. Open a private window for the {ROLE_LABEL[want].toLowerCase()} and claim its invite code there.</p>
+        <p>Each screen in this browser keeps one role, and this one is taken. For a second {ROLE_LABEL[want].toLowerCase()}, use another browser or device.</p>
       </section>
     );
   }
@@ -63,7 +63,7 @@ export function RoleGate({ want, children }: { want: 'coordinator' | 'driver' | 
     >
       <Icon name="person" size={22} />
       <h2>Claim the {ROLE_LABEL[want].toLowerCase()} role for this window</h2>
-      <p>Paste the invite code A gave you. Codes work once and stay with this browser, so use a separate private window for each role.</p>
+      <p>Paste the invite code A gave you. Codes work once. This screen keeps the role in this browser, separately from the other screens, so a reload or a new tab keeps it.</p>
       <label className="field">
         <span>Invite code</span>
         <input type="password" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" spellCheck={false} />
