@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DELAY, DEMO_ID, NEED_LABEL, fmt, signed, type Household, type Option } from '../demo/fixture';
 import { confirmDelay, h17Case, placeCall, reserve, useDemo, type Event, type JobStatus, type Result } from '../demo/store';
 import { Icon, type IconName } from '../ui/icons';
+import { needLine } from './policyChoice';
 import { LanePill } from './Board';
 
 const EVENT_ICON: Record<Event['kind'], IconName> = {
@@ -112,7 +113,8 @@ export function HouseholdDrawer({ row, onClose }: { row: Household; onClose: () 
       </header>
 
       <dl className="facts">
-        <div><dt>Need</dt><dd>{NEED_LABEL[reg.need]}</dd></div>
+        <div><dt>Need</dt><dd>{needLine(NEED_LABEL[reg.need], reg.confirmed)}</dd></div>
+        {reg.confirmed?.some((c) => c.id === 'step_free_access') && <div><dt>Access</dt><dd>Step-free access</dd></div>}
         <div><dt>Equipment</dt><dd>{reg.equipment}</dd></div>
         <div><dt>Contact</dt><dd>{reg.contact}</dd></div>
         {s.job?.status === 'received' && (

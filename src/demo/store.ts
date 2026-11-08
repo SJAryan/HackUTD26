@@ -1,6 +1,7 @@
 // FIXTURE MODE store. One state object in localStorage, synced across tabs so the
 // board, resident phone and driver phone can run side by side. A (TL-07) swaps
 // these actions for reducer calls with the same arguments and results.
+import type { KeptNeed } from '../screens/policyChoice';
 import { useSyncExternalStore } from 'react';
 import { DELAY, DEMO_ID, H17_ROUTES, OTHERS, OUTAGE_AT, evaluate, fmt, type Household, type Need, type PollAnswer } from './fixture';
 
@@ -11,7 +12,7 @@ export type Event = { at: number; kind: 'registry' | 'outreach' | 'reply' | 'rep
 export type AgentRequest = { consentId: string; leadId: string; at: number; contact: string };
 export type JobStatus = 'reserved' | 'en_route' | 'arrived' | 'received';
 export type Job = { jobId: string; requestId: string; routeId: string; assetId: string; driverId: string; version: number; status: JobStatus; eta: number };
-export type Registration = { name: string; age: string; phone: string; address: string; need: Need; equipment: string; contact: string };
+export type Registration = { name: string; age: string; phone: string; address: string; need: Need; equipment: string; contact: string; confirmed?: KeptNeed[] };
 
 export type DemoState = {
   clock: number;
