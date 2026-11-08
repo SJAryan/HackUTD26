@@ -11,12 +11,18 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  id: __t.string().primaryKey(),
+  id: __t.u64().primaryKey(),
+  roundId: __t.u64().name("round_id"),
   incidentId: __t.string().name("incident_id"),
-  label: __t.string(),
+  householdId: __t.string().name("household_id"),
+  status: __t.string(),
+  owner: __t.identity(),
+  dueAt: __t.timestamp().name("due_at"),
+  escalationLevel: __t.u32().name("escalation_level"),
   version: __t.u32(),
+  lastEventId: __t.option(__t.string()).name("last_event_id"),
+  lastObservedAt: __t.option(__t.timestamp()).name("last_observed_at"),
   runtimeLowerMin: __t.option(__t.u32()).name("runtime_lower_min"),
   runtimeUpperMin: __t.option(__t.u32()).name("runtime_upper_min"),
-  lastObservedAt: __t.option(__t.timestamp()).name("last_observed_at"),
-  lastEventId: __t.option(__t.string()).name("last_event_id"),
+  createdAt: __t.timestamp().name("created_at"),
 });

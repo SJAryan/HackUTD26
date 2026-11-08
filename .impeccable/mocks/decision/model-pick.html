@@ -1,0 +1,50 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--red:#c41e1e;--ink:#202020;--mute:#6b6b6b;--card:#fff;--ground:#eceae6}
+*{box-sizing:border-box;margin:0}
+body{width:1440px;height:900px;overflow:hidden;font-family:Archivo,sans-serif;color:var(--ink);background:var(--ground);position:relative}
+header{height:64px;background:#fff;border-bottom:6px solid var(--red);display:flex;align-items:center;padding:0 28px;gap:32px}
+.brand{font-weight:800;font-size:24px;color:var(--red)}
+nav{display:flex;gap:24px;font-weight:600;font-size:15px}nav a{color:var(--ink);text-decoration:none}nav a.on{border-bottom:3px solid var(--ink);padding-bottom:4px}
+.clock{margin-left:auto;font-weight:800;font-size:26px;font-variant-numeric:tabular-nums}
+.board{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;padding:22px 28px;height:836px}
+.col h2{font-size:15px;font-weight:600;display:flex;justify-content:space-between;margin-bottom:12px}
+.col h2 b{font-size:22px}
+.tag{background:var(--card);border-radius:4px;margin-bottom:12px;position:relative;box-shadow:0 1px 0 #d6d3cd;overflow:hidden}
+.tag::before{content:"";position:absolute;left:16px;top:12px;width:10px;height:10px;border-radius:50%;border:2px solid #bbb}
+.body{padding:12px 16px 12px 36px}
+.id{font-weight:800;font-size:20px}
+.need{font-size:14px;color:var(--mute)}
+.num{font-weight:800;font-size:34px;font-variant-numeric:tabular-nums;margin-top:6px}
+.src{font-size:13px;color:var(--mute)}
+.strip{height:30px;display:flex;align-items:center;padding-left:36px;font-weight:600;font-size:13px;border-top:2px dashed #cfcac2}
+.s-act{background:var(--red);color:#fff}
+.s-watch{background:#fff}
+.s-unk{background:repeating-linear-gradient(90deg,#fff 0 8px,#f0eeea 8px 16px)}
+.s-sil{background:var(--ink);color:#fff}
+.focus{outline:3px solid var(--ink)}
+button{margin:0 16px 14px 36px;font:600 15px Archivo;background:var(--red);color:#fff;border:0;border-radius:4px;padding:10px 14px}
+.fx{position:absolute;right:28px;bottom:10px;font-size:12px;color:var(--mute)}
+</style></head><body>
+<header><div class="brand">Before Zero</div><nav><a class="on">Board</a><a>Registry</a><a>Outreach</a><a>Drivers</a></nav><div class="clock">02:47</div></header>
+<div class="board">
+<div class="col"><h2>Act now <b>3</b></h2>
+<div class="tag focus"><div class="body"><div class="id">H17</div><div class="need">Home oxygen, BAT-01 with Ana via R4-ALT</div><div class="num">+6 min</div><div class="src">“30 to 60”, iMessage 02:30</div></div><button>Reserve and send Ana</button><div class="strip s-act">Act now</div></div>
+<div class="tag"><div class="body"><div class="id">H108</div><div class="need">No heat, ride with Rosa</div><div class="num">+8 min</div><div class="src">“49 degrees inside”, 02:40</div></div><div class="strip s-act">Act now</div></div>
+<div class="tag"><div class="body"><div class="id">H52</div><div class="need">Home dialysis, GEN-02 with Leo</div><div class="num">+9 min</div><div class="src">Next treatment 06:00</div></div><div class="strip s-act">Act now</div></div>
+</div>
+<div class="col"><h2>Watch <b>41</b></h2>
+<div class="tag"><div class="body"><div class="id">H31</div><div class="need">Home oxygen, BAT-04</div><div class="num">+23 min</div><div class="src">“1 to 2 hrs”, 02:35</div></div><div class="strip s-watch">Watch</div></div>
+<div class="tag"><div class="body"><div class="id">H77</div><div class="need">No heat, ride</div><div class="num">+50 min</div><div class="src">“55 inside”, 02:20</div></div><div class="strip s-watch">Watch</div></div>
+</div>
+<div class="col"><h2>Unknown <b>18</b></h2>
+<div class="tag"><div class="body"><div class="id">H64</div><div class="need">Home oxygen</div><div class="num">?</div><div class="src">“Not sure”, follow-up at 02:38</div></div><div class="strip s-unk">Unknown</div></div>
+</div>
+<div class="col"><h2>Silent <b>9</b></h2>
+<div class="tag"><div class="body"><div class="id">H22</div><div class="need">Home oxygen, no reply since 02:30</div><div class="num">Maya</div><div class="src">Callback due 02:50</div></div><div class="strip s-sil">Silent</div></div>
+</div>
+</div>
+<div class="fx">Fixture data</div>
+</body></html>

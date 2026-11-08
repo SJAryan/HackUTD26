@@ -1,0 +1,496 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-08T01:44:01.061720+00:00",
+  "title": "Design System: Before Zero",
+  "extensions": {
+    "colorMeta": {
+      "brand-red": {
+        "role": "primary",
+        "displayName": "Brand Red",
+        "canonical": "#c41e1e",
+        "tonalRamp": [
+          "#3b0909",
+          "#620f0f",
+          "#891515",
+          "#b01b1b",
+          "#d04b4b",
+          "#e28e8e",
+          "#f0c7c7",
+          "#faeded"
+        ]
+      },
+      "brand-red-press": {
+        "role": "primary",
+        "displayName": "Brand Red Press",
+        "canonical": "#a51818",
+        "tonalRamp": [
+          "#320707",
+          "#520c0c",
+          "#731111",
+          "#941616",
+          "#b74646",
+          "#d28c8c",
+          "#e8c5c5",
+          "#f8eded"
+        ]
+      },
+      "red-wash": {
+        "role": "primary",
+        "displayName": "Red Wash",
+        "canonical": "#fdf0f0",
+        "tonalRamp": [
+          "#4c4848",
+          "#7e7878",
+          "#b1a8a8",
+          "#e4d8d8",
+          "#fdf3f3",
+          "#fef8f8",
+          "#fefbfb",
+          "#fffefe"
+        ]
+      },
+      "red-band": {
+        "role": "primary",
+        "displayName": "Red Band",
+        "canonical": "rgba(196, 30, 30, 0.16)",
+        "tonalRamp": [
+          "#3b0909",
+          "#620f0f",
+          "#891515",
+          "#b01b1b",
+          "#d04b4b",
+          "#e28e8e",
+          "#f0c7c7",
+          "#faeded"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1d2129",
+        "tonalRamp": [
+          "#090a0c",
+          "#0e1014",
+          "#14171d",
+          "#1a1e25",
+          "#4a4d54",
+          "#8e9094",
+          "#c6c8ca",
+          "#ededee"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Ink 2",
+        "canonical": "#3c4350",
+        "tonalRamp": [
+          "#121418",
+          "#1e2228",
+          "#2a2f38",
+          "#363c48",
+          "#636973",
+          "#9ea1a8",
+          "#ced0d3",
+          "#eff0f1"
+        ]
+      },
+      "mute": {
+        "role": "neutral",
+        "displayName": "Mute",
+        "canonical": "#6b7280",
+        "tonalRamp": [
+          "#202226",
+          "#363940",
+          "#4b505a",
+          "#606773",
+          "#898e99",
+          "#b5b8c0",
+          "#dadcdf",
+          "#f3f4f5"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Rule",
+        "canonical": "#e5e7eb",
+        "tonalRamp": [
+          "#454547",
+          "#727476",
+          "#a0a2a4",
+          "#ced0d4",
+          "#eaecef",
+          "#f2f3f5",
+          "#f8f9fa",
+          "#fdfdfd"
+        ]
+      },
+      "rule-2": {
+        "role": "neutral",
+        "displayName": "Rule 2",
+        "canonical": "#d3d7de",
+        "tonalRamp": [
+          "#3f4143",
+          "#6a6c6f",
+          "#94969b",
+          "#bec2c8",
+          "#dcdfe5",
+          "#e9ebee",
+          "#f4f5f7",
+          "#fbfcfc"
+        ]
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Ground",
+        "canonical": "#f6f7f9",
+        "tonalRamp": [
+          "#4a4a4b",
+          "#7b7c7c",
+          "#acadae",
+          "#dddee0",
+          "#f8f9fa",
+          "#fafbfc",
+          "#fdfdfe",
+          "#fefeff"
+        ]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#4d4d4d",
+          "#808080",
+          "#b2b2b2",
+          "#e6e6e6",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff"
+        ]
+      },
+      "amber": {
+        "role": "secondary",
+        "displayName": "Watch Amber",
+        "canonical": "#8a5300",
+        "tonalRamp": [
+          "#291900",
+          "#452a00",
+          "#613a00",
+          "#7c4b00",
+          "#a17533",
+          "#c4a980",
+          "#e2d4bf",
+          "#f6f1eb"
+        ]
+      },
+      "amber-wash": {
+        "role": "secondary",
+        "displayName": "Watch Amber Wash",
+        "canonical": "#fff5e3",
+        "tonalRamp": [
+          "#4d4a44",
+          "#807a72",
+          "#b2ac9f",
+          "#e6dccc",
+          "#fff7e9",
+          "#fffaf1",
+          "#fffcf8",
+          "#fffefd"
+        ]
+      },
+      "amber-rule": {
+        "role": "secondary",
+        "displayName": "Watch Amber Rule",
+        "canonical": "#f0d39a",
+        "tonalRamp": [
+          "#483f2e",
+          "#786a4d",
+          "#a8946c",
+          "#d8be8b",
+          "#f3dcae",
+          "#f8e9cc",
+          "#fbf4e6",
+          "#fefbf7"
+        ]
+      },
+      "green": {
+        "role": "secondary",
+        "displayName": "Dispatched Green",
+        "canonical": "#17663a",
+        "tonalRamp": [
+          "#071f11",
+          "#0c331d",
+          "#104729",
+          "#155c34",
+          "#458561",
+          "#8bb29c",
+          "#c5d9ce",
+          "#ecf3ef"
+        ]
+      },
+      "green-wash": {
+        "role": "secondary",
+        "displayName": "Dispatched Green Wash",
+        "canonical": "#e7f5ec",
+        "tonalRamp": [
+          "#454a47",
+          "#747a76",
+          "#a2aca5",
+          "#d0dcd4",
+          "#ecf7f0",
+          "#f3faf6",
+          "#f9fcfa",
+          "#fdfefd"
+        ]
+      },
+      "green-solid": {
+        "role": "secondary",
+        "displayName": "Accept Green",
+        "canonical": "#1e8449",
+        "tonalRamp": [
+          "#092816",
+          "#0f4224",
+          "#155c33",
+          "#1b7742",
+          "#4b9d6d",
+          "#8ec2a4",
+          "#c7e0d2",
+          "#edf5f0"
+        ]
+      },
+      "slate-wash": {
+        "role": "secondary",
+        "displayName": "Silent Slate",
+        "canonical": "#e9ecf1",
+        "tonalRamp": [
+          "#464748",
+          "#747678",
+          "#a3a5a9",
+          "#d2d4d9",
+          "#edf0f4",
+          "#f4f6f8",
+          "#fafafc",
+          "#fdfdfe"
+        ]
+      },
+      "imessage-blue": {
+        "role": "tertiary",
+        "displayName": "iMessage Blue (native exception, simulated phone only)",
+        "canonical": "#0a7cff",
+        "tonalRamp": [
+          "#03254d",
+          "#053e80",
+          "#0757b2",
+          "#0970e6",
+          "#3b96ff",
+          "#84beff",
+          "#c2deff",
+          "#ebf5ff"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Registration-site intro only."
+      },
+      "metric": {
+        "displayName": "Metric",
+        "purpose": "KPI lane counts."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Drawer household ID, driver job heading."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Base text, tabular numerals."
+      },
+      "table": {
+        "displayName": "Table",
+        "purpose": "Table cells, drawer facts, callouts, buttons."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Headers, pills, chips; sentence case."
+      }
+    },
+    "shadows": [
+      {
+        "name": "whisper",
+        "value": "0 1px 2px rgba(29, 33, 41, 0.06), 0 1px 1px rgba(29, 33, 41, 0.03)",
+        "purpose": "Cards, panels, drawer, primary and secondary buttons."
+      },
+      {
+        "name": "lift",
+        "value": "0 12px 32px rgba(29, 33, 41, 0.14), 0 2px 6px rgba(29, 33, 41, 0.06)",
+        "purpose": "Device frame and drawer as overlay sheet."
+      },
+      {
+        "name": "focus-halo",
+        "value": "0 0 0 3px #fdf0f0",
+        "purpose": "Input and search focus, with red stroke."
+      },
+      {
+        "name": "select-ring",
+        "value": "0 0 0 1px currentColor",
+        "purpose": "Selected KPI (ink), route and choice (red)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state",
+        "value": "120ms",
+        "purpose": "Background and border transitions on buttons, rows, KPI cards."
+      },
+      {
+        "name": "row-flash",
+        "value": "flash 1.6s ease-out",
+        "purpose": "One-time tint on a changed table row or card."
+      },
+      {
+        "name": "lane-pulse",
+        "value": "900ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "One coordinated count pulse when a household changes lane."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "none",
+        "purpose": "All animation and transition disabled under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "520px"
+      },
+      {
+        "name": "compact",
+        "value": "760px"
+      },
+      {
+        "name": "rail-collapse",
+        "value": "900px"
+      },
+      {
+        "name": "drawer-sheet",
+        "value": "1180px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one red action per view: reserve and dispatch, submit registration.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Reserve BAT-01 and send Ana</button>",
+      "css": ".ds-btn { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid transparent; font-weight: 600; font-size: 13.5px; cursor: pointer; transition: background-color 120ms, border-color 120ms; } .ds-btn:focus-visible { outline: 2px solid #c41e1e; outline-offset: 2px; } .ds-btn-primary { background: #c41e1e; color: #fff; box-shadow: 0 1px 2px rgba(29,33,41,0.06), 0 1px 1px rgba(29,33,41,0.03); } .ds-btn-primary:hover { background: #a51818; } .ds-btn-primary:active { background: #a51818; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "White stroked button for non-primary actions.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">Open H17</button>",
+      "css": ".ds-btn { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid transparent; font-weight: 600; font-size: 13.5px; cursor: pointer; transition: background-color 120ms, border-color 120ms; } .ds-btn:focus-visible { outline: 2px solid #c41e1e; outline-offset: 2px; } .ds-btn-secondary { background: #fff; color: #1d2129; border-color: #d3d7de; box-shadow: 0 1px 2px rgba(29,33,41,0.06), 0 1px 1px rgba(29,33,41,0.03); } .ds-btn-secondary:hover { border-color: #6b7280; }"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Transparent utility action, e.g. Reset demo in the top bar.",
+      "html": "<button class=\"ds-btn ds-btn-quiet\">Reset demo</button>",
+      "css": ".ds-btn { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid transparent; font-weight: 600; font-size: 13.5px; cursor: pointer; transition: background-color 120ms, border-color 120ms; } .ds-btn:focus-visible { outline: 2px solid #c41e1e; outline-offset: 2px; } .ds-btn-quiet { background: transparent; color: #3c4350; } .ds-btn-quiet:hover { background: #f6f7f9; }"
+    },
+    {
+      "name": "Lane Pills",
+      "kind": "chip",
+      "refersTo": "pill-act-now",
+      "description": "Lane state carried by icon, fill and weight, never red alone.",
+      "html": "<span class=\"ds-pill ds-act\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 3.2 17.6 16.4H2.4L10 3.2Z\"/><path d=\"M10 8.2v3.6\"/><path d=\"M10 14.2v.1\"/></svg>Act now</span><span class=\"ds-pill ds-watch\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2.4 10S5.2 4.8 10 4.8s7.6 5.2 7.6 5.2-2.8 5.2-7.6 5.2S2.4 10 2.4 10Z\"/><circle cx=\"10\" cy=\"10\" r=\"2.2\"/></svg>Watch</span><span class=\"ds-pill ds-unknown\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"7.2\"/><path d=\"M7.9 7.9a2.2 2.2 0 1 1 3.2 2c-.7.4-1.1.9-1.1 1.7\"/><path d=\"M10 14.1v.1\"/></svg>Unknown</span><span class=\"ds-pill ds-silent\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5.2 3.6h2.4l1.2 3-1.6 1.1a8.4 8.4 0 0 0 1.4 2\"/><path d=\"M11.6 12.2a8.4 8.4 0 0 0 .6.4l1.1-1.6 3 1.2v2.4a1.6 1.6 0 0 1-1.7 1.6A12.4 12.4 0 0 1 3.6 5.3a1.6 1.6 0 0 1 1.6-1.7\"/><path d=\"M3 3l14 14\"/></svg>Silent</span><span class=\"ds-pill ds-done\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m4.4 10.4 3.4 3.4 7.8-7.8\"/></svg>Dispatched</span>",
+      "css": ".ds-pill { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid transparent; margin-right: 6px; } .ds-act { background: #c41e1e; color: #fff; } .ds-watch { background: #fff5e3; color: #8a5300; border-color: #f0d39a; } .ds-unknown { background: #fff; color: #3c4350; border: 1px dashed #8b93a1; } .ds-silent { background: #e9ecf1; color: #3c4350; } .ds-done { background: #e7f5ec; color: #17663a; }"
+    },
+    {
+      "name": "KPI Lane Card",
+      "kind": "card",
+      "refersTo": "kpi-card",
+      "description": "Clickable lane count that filters the table; selected gets an ink ring.",
+      "html": "<button class=\"ds-kpi ds-kpi-act\"><span class=\"ds-kpi-label\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 3.2 17.6 16.4H2.4L10 3.2Z\"/><path d=\"M10 8.2v3.6\"/><path d=\"M10 14.2v.1\"/></svg>Act now</span><b>3</b><span class=\"ds-kpi-sub\">Under 15 min</span></button>",
+      "css": ".ds-kpi { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; display: flex; flex-direction: column; gap: 2px; width: 150px; text-align: left; padding: 14px 16px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 1px 2px rgba(29,33,41,0.06), 0 1px 1px rgba(29,33,41,0.03); cursor: pointer; transition: border-color 120ms, box-shadow 120ms; font-variant-numeric: tabular-nums; } .ds-kpi:hover { border-color: #d3d7de; } .ds-kpi:focus-visible { outline: 2px solid #c41e1e; outline-offset: 2px; } .ds-kpi-label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #3c4350; } .ds-kpi b { font-size: 30px; font-weight: 650; line-height: 1.15; letter-spacing: -0.02em; color: #1d2129; } .ds-kpi-sub { font-size: 12px; color: #6b7280; } .ds-kpi-act .ds-kpi-label, .ds-kpi-act b { color: #c41e1e; } .ds-kpi-act { border-color: #1d2129; box-shadow: 0 0 0 1px #1d2129; }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Table search; red stroke and red-wash halo on focus.",
+      "html": "<label class=\"ds-search\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"8.8\" cy=\"8.8\" r=\"5.2\"/><path d=\"m12.6 12.6 4 4\"/></svg><input placeholder=\"Search household, street or need\"></label>",
+      "css": ".ds-search { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; width: 280px; border: 1px solid #d3d7de; border-radius: 6px; color: #6b7280; background: #fff; } .ds-search:focus-within { border-color: #c41e1e; box-shadow: 0 0 0 3px #fdf0f0; } .ds-search input { border: 0; outline: 0; flex: 1; min-width: 0; background: none; font: inherit; font-size: 13.5px; color: #1d2129; }"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Left rail; active item is red-wash fill with red text.",
+      "html": "<nav class=\"ds-rail\"><a class=\"ds-on\" href=\"#\">Board</a><a href=\"#\">Registration site</a><a href=\"#\">Resident phone</a><a href=\"#\">Driver phone</a></nav>",
+      "css": ".ds-rail { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; display: flex; flex-direction: column; gap: 2px; width: 200px; } .ds-rail a { padding: 8px 10px; border-radius: 6px; color: #3c4350; font-weight: 500; font-size: 14px; text-decoration: none; } .ds-rail a:hover { background: #f6f7f9; color: #1d2129; } .ds-rail a:focus-visible { outline: 2px solid #c41e1e; outline-offset: 2px; } .ds-rail a.ds-on { background: #fdf0f0; color: #c41e1e; font-weight: 600; }"
+    },
+    {
+      "name": "Route Option",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Selectable route card with arrival band and ready dot; signed tabular margin.",
+      "html": "<label class=\"ds-route\"><span class=\"ds-route-head\"><b>R4-ALT</b><span class=\"ds-sub\">BAT-01, Ana, ready 03:02</span><span class=\"ds-m\">+6 min</span></span><span class=\"ds-track\"><span class=\"ds-band\"></span><span class=\"ds-dot\"></span></span></label>",
+      "css": ".ds-route { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; display: block; width: 360px; padding: 10px 12px 12px; border: 1px solid #c41e1e; box-shadow: 0 0 0 1px #c41e1e; background: #fffbfb; border-radius: 8px; cursor: pointer; font-size: 13.5px; color: #1d2129; } .ds-route:hover { border-color: #a51818; } .ds-route-head { display: flex; align-items: baseline; gap: 8px; } .ds-sub { margin-right: auto; color: #6b7280; font-size: 12.5px; } .ds-m { font-weight: 700; font-size: 15px; color: #c41e1e; font-variant-numeric: tabular-nums; } .ds-track { display: block; position: relative; height: 8px; margin-top: 10px; border-radius: 4px; background: #f6f7f9; } .ds-band { position: absolute; top: 0; bottom: 0; left: 45%; right: 10%; border-radius: 4px; background: rgba(196,30,30,0.16); } .ds-dot { position: absolute; top: 50%; left: 35%; width: 12px; height: 12px; border-radius: 50%; background: #1d2129; border: 2px solid #fff; transform: translate(-50%,-50%); box-shadow: 0 0 0 1px #1d2129; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The 2am Incident Desk",
+    "overview": "The category-standard operations dashboard, played straight. A coordinator sees the whole incident first (KPI lanes), then the household that needs action (a ranked, filterable table), then its evidence and dispatch (a right-hand detail drawer). The interaction bar is a live incident tool; the format bar is a payments-grade dashboard: rail, KPI row, table, drawer. No novelty board, no map.\n\nThe world is white ground, cool grey rules and ink text, with one brand red framing the product: the logo, the active nav item, the active tab and the primary action. Density is moderate and legible at projector distance; numbers are tabular so margins line up. Phone views (resident iMessage thread, incoming call, driver job) sit inside a drawn device frame on desktop and go full-bleed on small screens.\n\nBefore Zero is not a State Farm product. Red and white is a palette direction from the sponsor track, never a borrowed identity: no State Farm logo, wordmark or implied endorsement.",
+    "keyCharacteristics": [
+      "Rail, top bar, KPI row, lane tabs, ranked table, sticky detail drawer.",
+      "One brand red; lanes distinguished by icon + fill + weight, not hue alone.",
+      "System UI type, tabular numerals everywhere.",
+      "Flat white cards on a pale cool ground, separated by 1px rules and a whisper shadow.",
+      "Authored 20px line icons, one 1.6 stroke, round caps."
+    ],
+    "rules": [
+      {
+        "name": "The One Red Rule",
+        "body": "Red owns the brand frame and the primary action. A screen carries one primary red button at a time.",
+        "section": "colors"
+      },
+      {
+        "name": "The Never-Red-Alone Rule",
+        "body": "Urgency is carried by icon, fill and weight, never by red alone. Act now is a solid red pill with an alert triangle; Watch is an amber outline with an eye; Unknown is dashed with a question mark; Silent is slate with a phone-off; Dispatched is green with a check. Tight margins pair red with bold weight and, on routes, an alert icon.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "`font-variant-numeric: tabular-nums` is global; margins, clocks and counts always align. Margins are signed (`+6 min`, `−3 min`) and set in 600-700.",
+        "section": "typography"
+      },
+      {
+        "name": "The Rules-Not-Shadows Rule",
+        "body": "Separate with 1px rules first. Selection is shown with a 1px ring (ink for KPI, red for route and choice), not a deeper shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do pair every lane state with its icon and fill; color is the third signal, not the first.",
+      "Do keep one red primary action per view and put it where the decision is made (drawer dispatch, registration submit).",
+      "Do use tabular, signed margins and show where each number came from (reply, timestamp).",
+      "Do label fixture and simulated data visibly (Synthetic/Demo tags, Fixture data chip, Simulated chip).",
+      "Do use the authored icon set at 20px viewBox, 1.6 stroke, round caps, currentColor."
+    ],
+    "donts": [
+      "Don't signal urgency with red alone, or use red for decoration, borders at rest or large fills beyond the primary button and Act now pill.",
+      "Don't use iMessage blue outside the simulated resident phone.",
+      "Don't add a State Farm logo, wordmark or anything implying endorsement.",
+      "Don't add a map, novelty board or hero art to the coordinator surface.",
+      "Don't introduce heavier shadows on cards; elevation is for the device frame and overlay sheet only.",
+      "Don't use uppercase eyebrow labels; labels are sentence case at 12px/600."
+    ]
+  }
+}

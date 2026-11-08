@@ -34,93 +34,217 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import ClaimFollowupReducer from "./claim_followup_reducer";
+import ClaimInviteReducer from "./claim_invite_reducer";
+import ConfirmRouteReportReducer from "./confirm_route_report_reducer";
+import CreateInviteReducer from "./create_invite_reducer";
+import EnrollPreparednessReducer from "./enroll_preparedness_reducer";
 import IngestCheckinReducer from "./ingest_checkin_reducer";
+import OpenCheckinRoundReducer from "./open_checkin_round_reducer";
+import PostJobMessageReducer from "./post_job_message_reducer";
+import ReleaseJobReducer from "./release_job_reducer";
+import RequestAgentContactReducer from "./request_agent_contact_reducer";
+import ReserveReducer from "./reserve_reducer";
+import ResetIncidentReducer from "./reset_incident_reducer";
+import SetFollowupIntervalReducer from "./set_followup_interval_reducer";
+import SkipAgentContactReducer from "./skip_agent_contact_reducer";
+import UpdateJobReducer from "./update_job_reducer";
 
 // Import all procedure arg schemas
 
 // Import all table schema definitions
-import AssetRow from "./asset_table";
-import CheckinRow from "./checkin_table";
-import DriverRow from "./driver_table";
-import HouseholdRow from "./household_table";
-import IncidentRow from "./incident_table";
+import BridgeCheckinsRow from "./bridge_checkins_table";
+import BridgeOutboxRow from "./bridge_outbox_table";
+import CoordinatorAssetsRow from "./coordinator_assets_table";
+import CoordinatorCheckinsRow from "./coordinator_checkins_table";
+import CoordinatorDriversRow from "./coordinator_drivers_table";
+import CoordinatorFollowupAuditRow from "./coordinator_followup_audit_table";
+import CoordinatorFollowupsRow from "./coordinator_followups_table";
+import CoordinatorHouseholdsRow from "./coordinator_households_table";
+import CoordinatorJobsRow from "./coordinator_jobs_table";
+import CoordinatorProfilesRow from "./coordinator_profiles_table";
+import CoordinatorRegistryStatsRow from "./coordinator_registry_stats_table";
+import CoordinatorRoundsRow from "./coordinator_rounds_table";
+import CoordinatorRoutesRow from "./coordinator_routes_table";
+import DriverJobsRow from "./driver_jobs_table";
+import JobMessagesRow from "./job_messages_table";
+import MyAgentDeclineRow from "./my_agent_decline_table";
+import MyAgentRequestRow from "./my_agent_request_table";
+import MyIncidentRow from "./my_incident_table";
+import MyProfileRow from "./my_profile_table";
+import MyRoleRow from "./my_role_table";
+import ResidentJobsRow from "./resident_jobs_table";
 
 /** Type-only namespace exports for generated type groups. */
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
-  asset: __table({
-    name: 'asset',
+  bridgeCheckins: __table({
+    name: 'bridge_checkins',
     indexes: [
-      { accessor: 'id', name: 'asset_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'incidentId', name: 'asset_incident_id_idx_btree', algorithm: 'btree', columns: [
-        'incidentId',
-      ] },
     ],
     constraints: [
-      { name: 'asset_id_key', constraint: 'unique', columns: ['id'] },
     ],
-  }, AssetRow),
-  checkin: __table({
-    name: 'checkin',
+  }, BridgeCheckinsRow),
+  bridgeOutbox: __table({
+    name: 'bridge_outbox',
     indexes: [
-      { accessor: 'eventId', name: 'checkin_event_id_idx_btree', algorithm: 'btree', columns: [
-        'eventId',
-      ] },
-      { accessor: 'householdId', name: 'checkin_household_id_idx_btree', algorithm: 'btree', columns: [
-        'householdId',
-      ] },
     ],
     constraints: [
-      { name: 'checkin_event_id_key', constraint: 'unique', columns: ['eventId'] },
     ],
-  }, CheckinRow),
-  driver: __table({
-    name: 'driver',
+  }, BridgeOutboxRow),
+  coordinatorAssets: __table({
+    name: 'coordinator_assets',
     indexes: [
-      { accessor: 'id', name: 'driver_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'incidentId', name: 'driver_incident_id_idx_btree', algorithm: 'btree', columns: [
-        'incidentId',
-      ] },
     ],
     constraints: [
-      { name: 'driver_id_key', constraint: 'unique', columns: ['id'] },
     ],
-  }, DriverRow),
-  household: __table({
-    name: 'household',
+  }, CoordinatorAssetsRow),
+  coordinatorCheckins: __table({
+    name: 'coordinator_checkins',
     indexes: [
-      { accessor: 'id', name: 'household_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'incidentId', name: 'household_incident_id_idx_btree', algorithm: 'btree', columns: [
-        'incidentId',
-      ] },
     ],
     constraints: [
-      { name: 'household_id_key', constraint: 'unique', columns: ['id'] },
     ],
-  }, HouseholdRow),
-  incident: __table({
-    name: 'incident',
+  }, CoordinatorCheckinsRow),
+  coordinatorDrivers: __table({
+    name: 'coordinator_drivers',
     indexes: [
-      { accessor: 'id', name: 'incident_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
     ],
     constraints: [
-      { name: 'incident_id_key', constraint: 'unique', columns: ['id'] },
     ],
-  }, IncidentRow),
+  }, CoordinatorDriversRow),
+  coordinatorFollowupAudit: __table({
+    name: 'coordinator_followup_audit',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorFollowupAuditRow),
+  coordinatorFollowups: __table({
+    name: 'coordinator_followups',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorFollowupsRow),
+  coordinatorHouseholds: __table({
+    name: 'coordinator_households',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorHouseholdsRow),
+  coordinatorJobs: __table({
+    name: 'coordinator_jobs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorJobsRow),
+  coordinatorProfiles: __table({
+    name: 'coordinator_profiles',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorProfilesRow),
+  coordinatorRegistryStats: __table({
+    name: 'coordinator_registry_stats',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorRegistryStatsRow),
+  coordinatorRounds: __table({
+    name: 'coordinator_rounds',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorRoundsRow),
+  coordinatorRoutes: __table({
+    name: 'coordinator_routes',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorRoutesRow),
+  driverJobs: __table({
+    name: 'driver_jobs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, DriverJobsRow),
+  jobMessages: __table({
+    name: 'job_messages',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, JobMessagesRow),
+  myAgentDecline: __table({
+    name: 'my_agent_decline',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyAgentDeclineRow),
+  myAgentRequest: __table({
+    name: 'my_agent_request',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyAgentRequestRow),
+  myIncident: __table({
+    name: 'my_incident',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyIncidentRow),
+  myProfile: __table({
+    name: 'my_profile',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyProfileRow),
+  myRole: __table({
+    name: 'my_role',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyRoleRow),
+  residentJobs: __table({
+    name: 'resident_jobs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ResidentJobsRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("claim_followup", ClaimFollowupReducer),
+  __reducerSchema("claim_invite", ClaimInviteReducer),
+  __reducerSchema("confirm_route_report", ConfirmRouteReportReducer),
+  __reducerSchema("create_invite", CreateInviteReducer),
+  __reducerSchema("enroll_preparedness", EnrollPreparednessReducer),
   __reducerSchema("ingest_checkin", IngestCheckinReducer),
+  __reducerSchema("open_checkin_round", OpenCheckinRoundReducer),
+  __reducerSchema("post_job_message", PostJobMessageReducer),
+  __reducerSchema("release_job", ReleaseJobReducer),
+  __reducerSchema("request_agent_contact", RequestAgentContactReducer),
+  __reducerSchema("reserve", ReserveReducer),
+  __reducerSchema("reset_incident", ResetIncidentReducer),
+  __reducerSchema("set_followup_interval", SetFollowupIntervalReducer),
+  __reducerSchema("skip_agent_contact", SkipAgentContactReducer),
+  __reducerSchema("update_job", UpdateJobReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */

@@ -1,0 +1,70 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--red:#c41e1e;--ink:#222;--mute:#666;--rule:#e2e2e2;--paper:#fff;--wash:#f6f4f4}
+*{box-sizing:border-box;margin:0}
+body{width:1440px;height:900px;overflow:hidden;font-family:Barlow,sans-serif;color:var(--ink);background:var(--paper);position:relative}
+header{background:var(--red);color:#fff;display:flex;align-items:center;gap:40px;padding:0 32px;height:72px}
+.brand{font:700 30px 'Barlow Semi Condensed';letter-spacing:-.01em}
+.inc{font-size:15px;opacity:.92}
+.clock{margin-left:auto;font:600 34px 'Barlow Semi Condensed';font-variant-numeric:tabular-nums}
+.lanes{display:grid;grid-template-columns:repeat(4,1fr) 1.3fr;border-bottom:1px solid var(--rule)}
+.lane{padding:14px 24px;border-right:1px solid var(--rule)}
+.lane b{display:block;font:700 44px 'Barlow Semi Condensed';line-height:1}
+.lane span{font-size:14px;color:var(--mute)}
+.lane.act{background:var(--ink);color:#fff}.lane.act span{color:#ddd}
+.res{padding:14px 24px;font-size:14px;color:var(--mute)}
+.res strong{color:var(--ink);font:600 20px 'Barlow Semi Condensed'}
+main{display:grid;grid-template-columns:1fr 400px;height:749px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font:600 13px Barlow;color:var(--mute);text-align:left;padding:12px 16px;border-bottom:2px solid var(--ink)}
+td{padding:0 16px;height:58px;border-bottom:1px solid var(--rule);font-size:16px}
+tr.dim td{color:#8a8a8a}
+tr.sel td{background:#fff5f5;border-bottom:2px solid var(--red)}
+.m{font:700 30px 'Barlow Semi Condensed';text-align:right;width:90px}
+.neg{color:var(--red)}
+.tag{display:inline-block;font:600 13px Barlow;padding:3px 10px;border:2px solid var(--ink);border-radius:3px}
+.tag.act{background:var(--ink);color:#fff}
+.tag.unk{border-style:dashed}
+.tag.sil{background:repeating-linear-gradient(135deg,#fff 0 4px,#ddd 4px 6px)}
+.flap{display:inline-block;background:var(--ink);color:#fff;padding:0 6px;border-radius:3px;position:relative}
+.flap::after{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px solid #555}
+aside{border-left:1px solid var(--rule);padding:24px;background:var(--wash);display:flex;flex-direction:column;gap:16px}
+aside h2{font:700 28px 'Barlow Semi Condensed'}
+.src{background:#fff;border-left:4px solid var(--red);padding:12px 14px;font-size:15px}
+.src small{display:block;color:var(--mute);margin-top:4px}
+.bar{height:10px;background:var(--rule);position:relative;border-radius:2px}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--red);border-radius:2px}
+.row{display:flex;justify-content:space-between;font-size:15px}
+button{font:600 18px Barlow;background:var(--red);color:#fff;border:0;border-radius:4px;padding:14px;margin-top:auto}
+.fx{position:absolute;right:32px;bottom:12px;font-size:12px;color:var(--mute)}
+</style></head><body>
+<header><div class="brand">Before Zero</div><div class="inc">Winter freeze outage, North zone, 200 registered households (synthetic)</div><div class="clock">02:47</div></header>
+<section class="lanes">
+<div class="lane act"><b>3</b><span>Act now</span></div>
+<div class="lane"><b>41</b><span>Watch</span></div>
+<div class="lane"><b>18</b><span>Unknown, follow-up sent</span></div>
+<div class="lane"><b>9</b><span>Silent, callback owned</span></div>
+<div class="res"><strong>2 of 6</strong> batteries free<br><strong>1 of 2</strong> generators free<br><strong>1 of 3</strong> drivers free</div>
+</section>
+<main><div>
+<table>
+<tr><th>Household</th><th>Need</th><th>Reported</th><th>Runs out</th><th>Best option</th><th>Ready</th><th style="text-align:right">Margin</th><th>Lane</th></tr>
+<tr class="sel"><td><b>H17</b></td><td>Home oxygen</td><td>02:30, 30 to 60 min</td><td>03:00 to 03:30</td><td>BAT-01, Ana, R4-ALT</td><td>02:54</td><td class="m"><span class="flap">+6</span></td><td><span class="tag act">Act now</span></td></tr>
+<tr class="dim"><td>H52</td><td>Home dialysis</td><td>02:12, next treatment 06:00</td><td>06:00</td><td>GEN-02, Leo</td><td>05:51</td><td class="m">+9</td><td><span class="tag act">Act now</span></td></tr>
+<tr class="dim"><td>H108</td><td>No heat</td><td>02:40, indoor 49°F</td><td>04:10</td><td>Ride, Rosa</td><td>04:02</td><td class="m">+8</td><td><span class="tag act">Act now</span></td></tr>
+<tr class="dim"><td>H31</td><td>Home oxygen</td><td>02:35, 1 to 2 hrs</td><td>03:35 to 04:35</td><td>BAT-04, Rosa</td><td>03:12</td><td class="m">+23</td><td><span class="tag">Watch</span></td></tr>
+<tr class="dim"><td>H77</td><td>No heat</td><td>02:20, indoor 55°F</td><td>05:30</td><td>Ride, Leo</td><td>04:40</td><td class="m">+50</td><td><span class="tag">Watch</span></td></tr>
+<tr class="dim"><td>H64</td><td>Home oxygen</td><td>02:33, not sure</td><td>Unknown</td><td>Follow-up 02:38</td><td>—</td><td class="m">?</td><td><span class="tag unk">Unknown</span></td></tr>
+<tr class="dim"><td>H22</td><td>Home oxygen</td><td>No reply since 02:30</td><td>Unknown</td><td>Callback: Maya, due 02:50</td><td>—</td><td class="m">—</td><td><span class="tag sil">Silent</span></td></tr>
+</table></div>
+<aside>
+<h2>H17, home oxygen</h2>
+<div class="src">“30 to 60”<small>iMessage poll reply, 02:30. Backup runs out 03:00 to 03:30.</small></div>
+<div class="row"><span>R4, confirmed 20-min delay</span><b class="neg">−3</b></div><div class="bar"><i style="width:100%"></i></div>
+<div class="row"><span>R4-ALT, BAT-01, Ana</span><b>+6</b></div><div class="bar"><i style="width:80%;background:var(--ink)"></i></div>
+<button>Reserve BAT-01 and send Ana</button>
+</aside></main>
+<div class="fx">Fixture data</div>
+</body></html>

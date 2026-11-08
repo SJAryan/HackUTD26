@@ -1,46 +1,158 @@
-// TL-01 connection check only. D replaces this screen in TL-04/TL-07.
-import { tables } from './module_bindings';
+import { useEffect, useState } from 'react';
 import { useSpacetimeDB, useTable } from 'spacetimedb/react';
+import { tables } from './module_bindings';
+import { INCIDENT, fmt } from './demo/fixture';
+import { AUTO_CALL_MS, placeCall, reset, useDemo } from './demo/store';
+import { Icon, type IconName } from './ui/icons';
+import { Board } from './screens/Board';
+import { Register } from './screens/Register';
+import { ResidentPhone } from './screens/ResidentPhone';
+import { DriverPhone } from './screens/DriverPhone';
+import { ConnectionCheck } from './screens/ConnectionCheck';
+import { setMode, useMode } from './live/mode';
+import { RoleGate, roleText, useMyRole } from './live/RoleGate';
+import { LiveBoard, useNow } from './live/LiveBoard';
+import { LivePhone } from './live/LivePhone';
+import { LiveRegister } from './live/LiveConsent';
+import { hhmm } from './live/model';
+import './styles.css';
 
-const time = (t?: { toDate(): Date }) => (t ? t.toDate().toISOString() : 'unknown');
-const range = (lo?: number, hi?: number) =>
-  lo === undefined ? 'unknown' : `${lo}–${hi ?? 'open'} min`;
+type Route = 'board' | 'register' | 'resident' | 'driver' | 'connection';
+const NAV: { route: Route; label: string; icon: IconName }[] = [
+  { route: 'board', label: 'Board', icon: 'board' },
+  { route: 'register', label: 'Registration site', icon: 'form' },
+  { route: 'resident', label: 'Resident phone', icon: 'message' },
+  { route: 'driver', label: 'Driver phone', icon: 'truck' },
+];
+const TITLE: Record<Route, string> = {
+  board: `${INCIDENT.name}, ${INCIDENT.area}`,
+  register: 'Registration site',
+  resident: 'Resident phone',
+  driver: 'Driver phone',
+  connection: 'Connection check',
+};
 
-function App() {
-  const { isActive: connected } = useSpacetimeDB();
-  const [households, ready] = useTable(tables.household);
-  const [checkins] = useTable(tables.checkin);
+const read = (): Route => {
+  const r = window.location.hash.replace('#/', '') as Route;
+  return r in TITLE ? r : 'board';
+};
 
+function useRoute() {
+  const [route, setRoute] = useState<Route>(read);
+  useEffect(() => {
+    const on = () => setRoute(read());
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
+  return [route, (r: string) => (window.location.hash = `#/${r}`)] as const;
+}
+
+function Steps() {
+  const s = useDemo();
+  const steps = [
+    { label: 'Resident registers', done: !!s.registration },
+    { label: 'Outage starts', done: s.outage },
+    { label: 'iMessage and call go out', done: s.outage && (s.call !== 'none' || !!s.answer) },
+    { label: 'Resident reports backup left', done: !!s.answer },
+    { label: 'Driver sent', done: !!s.job },
+    { label: 'Battery received', done: s.job?.status === 'received' },
+    { label: 'Agent contact, optional', done: !!s.agentRequest || s.agentSkipped },
+  ];
+  const next = steps.findIndex((x) => !x.done);
   return (
-    <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
-      <h1>Time Left · TL-01 connection check</h1>
-      <p>
-        Status: <strong>{connected ? 'Connected' : 'Disconnected'}</strong> ·{' '}
-        {ready ? 'Live subscription' : 'Waiting for data'} · Synthetic seed data
-      </p>
-
-      <h2>Households</h2>
-      <ul>
-        {[...households]
-          .sort((a, b) => a.id.localeCompare(b.id))
-          .map(h => (
-            <li key={h.id}>
-              {h.label}: v{h.version}, backup {range(h.runtimeLowerMin, h.runtimeUpperMin)}, observed{' '}
-              {time(h.lastObservedAt)}
-            </li>
-          ))}
-      </ul>
-
-      <h2>Check-ins ({checkins.length})</h2>
-      <ul>
-        {checkins.map(c => (
-          <li key={c.eventId}>
-            {c.householdId} · {time(c.observedAt)} · “{c.text}”
-          </li>
-        ))}
-      </ul>
-    </main>
+    <ol className="demo-steps" aria-label="Demo progress">
+      {steps.map((x, i) => (
+        <li key={x.label} className={x.done ? 'done' : i === next ? 'next' : ''}>
+          <span className="dot">{x.done ? <Icon name="check" size={11} /> : i + 1}</span>
+          {x.label}
+        </li>
+      ))}
+    </ol>
   );
 }
 
-export default App;
+export default function App() {
+  const [route, go] = useRoute();
+  const s = useDemo();
+  const { isActive } = useSpacetimeDB();
+  const mode = useMode();
+  const live = mode === 'live';
+  const { role } = useMyRole();
+  const [incidents] = useTable(tables.myIncident);
+  const incident = incidents[0];
+  const now = useNow(30_000);
+
+  // Automated call when the poll gets no reply. placeCall ignores repeats, so open tabs can't double-call.
+  const waiting = !live && s.outage && !s.answer && s.call === 'none';
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setTimeout(() => placeCall('auto'), AUTO_CALL_MS);
+    return () => clearTimeout(t);
+  }, [waiting]);
+
+  return (
+    <div className="shell">
+      <nav className="rail" aria-label="Views">
+        <a className="brand" href="#/board">
+          <span className="mark" aria-hidden="true" />
+          Before Zero
+        </a>
+        <ul>
+          {NAV.map((n) => (
+            <li key={n.route}>
+              <a href={`#/${n.route}`} className={route === n.route ? 'on' : ''} aria-current={route === n.route ? 'page' : undefined}>
+                <Icon name={n.icon} size={16} />
+                <span>{n.label}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        {!live && (
+          <div className="rail-foot">
+            <h2>Demo run</h2>
+            <Steps />
+          </div>
+        )}
+      </nav>
+
+      <div className="main">
+        <header className="topbar">
+          <h1>{live && route === 'board' ? incident?.name ?? 'Live incident' : TITLE[route]}</h1>
+          <span className="clock" aria-label={live ? 'Local time, Central' : 'Simulated clock'}>
+            <Icon name="clock" size={15} />
+            {live ? hhmm(now) : fmt(s.clock)}
+          </span>
+          <div className="mode" role="group" aria-label="Data source">
+            <button aria-pressed={!live} className={!live ? 'on' : ''} onClick={() => setMode('fixture')}>Fixture</button>
+            <button aria-pressed={live} className={live ? 'on' : ''} onClick={() => setMode('live')}>Live</button>
+          </div>
+          <a className={`chip ${isActive ? 'chip-live' : ''}`} href="#/connection">
+            {!isActive ? 'Database offline' : live ? roleText(role) : 'Database connected'}
+          </a>
+          {!live && <button
+            className="btn btn-quiet reset"
+            aria-label="Reset demo"
+            onClick={() => {
+              reset();
+              go('register');
+            }}
+          >
+            <Icon name="reset" size={15} /> <span className="btn-label">Reset demo</span>
+          </button>}
+        </header>
+
+        <main className={`view view-${route}`}>
+          {!live && route === 'board' && <Board key={s.registration ? 'r' : 'n'} />}
+          {!live && route === 'resident' && <ResidentPhone />}
+          {!live && route === 'driver' && <DriverPhone />}
+          {live && route === 'board' && <RoleGate want="coordinator"><LiveBoard /></RoleGate>}
+          {live && route === 'resident' && <RoleGate want="resident"><LivePhone as="resident" /></RoleGate>}
+          {live && route === 'driver' && <RoleGate want="driver"><LivePhone as="driver" /></RoleGate>}
+          {!live && route === 'register' && <Register go={go} />}
+          {live && route === 'register' && <RoleGate want="resident"><LiveRegister go={go} /></RoleGate>}
+          {route === 'connection' && <ConnectionCheck />}
+        </main>
+      </div>
+    </div>
+  );
+}
