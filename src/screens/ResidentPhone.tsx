@@ -97,7 +97,6 @@ export function ResidentPhone() {
 function AgentOffer() {
   const s = useDemo();
   const [agree, setAgree] = useState(false);
-  const [pending, setPending] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const consentId = useRef(`consent-${Math.random().toString(36).slice(2, 8)}`);
   const req = s.agentRequest;
@@ -116,14 +115,11 @@ function AgentOffer() {
     return <p className="thread-empty">Received. Thank you for confirming. Nothing else was saved.</p>;
   }
 
+  // Synchronous on purpose: no timer can outlive this screen or race a later Skip.
+  // TL-07 swaps this for the reducer and shows the receipt only from the committed row.
   const send = () => {
-    if (!agree || pending) return;
-    setPending(true);
-    // The receipt appears only once the request comes back committed or duplicate.
-    setTimeout(() => {
-      setResult(requestAgentContact(consentId.current));
-      setPending(false);
-    }, 400);
+    if (!agree) return;
+    setResult(requestAgentContact(consentId.current));
   };
 
   return (
@@ -136,8 +132,8 @@ function AgentOffer() {
       </label>
       {result && result.kind !== 'committed' && <p className="offer-fine">{result.text}</p>}
       <div className="offer-actions">
-        <button className="btn btn-quiet" onClick={skipAgentContact} disabled={pending}>Skip</button>
-        <button className="btn btn-primary" onClick={send} disabled={!agree || pending}>{pending ? 'Saving…' : 'Ask an agent'}</button>
+        <button className="btn btn-quiet" onClick={skipAgentContact}>Skip</button>
+        <button className="btn btn-primary" onClick={send} disabled={!agree}>Ask an agent</button>
       </div>
     </section>
   );

@@ -288,12 +288,13 @@ export function requestAgentContact(consentId: string): Result {
     ? { kind: 'duplicate', text: `Already saved as ${r.leadId}. Nothing new was recorded.` }
     : { kind: 'conflict', text: `This household already has request ${r.leadId}.` };
   if (state.job?.status !== 'received') return { kind: 'conflict', text: 'Agent contact is offered only after help is delivered.' };
+  // Skip is final for this run: a late or stray request can never turn it into a lead.
+  if (state.agentSkipped) return { kind: 'conflict', text: 'The resident skipped. Nothing was saved.' };
   const reg = state.registration!;
   const req: AgentRequest = { consentId, leadId: 'L-1', at: state.clock, contact: reg.contact };
   set({
     ...state,
     agentRequest: req,
-    agentSkipped: false,
     events: [...state.events, ev({ kind: 'consent', who: DEMO_ID, text: `Asked a State Farm agent to follow up about coverage. Consent saved as ${req.leadId}.` })],
   });
   return { kind: 'committed', text: `Saved as ${req.leadId}.` };
