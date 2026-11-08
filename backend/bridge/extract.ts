@@ -21,6 +21,7 @@ function normalize(sentence: string): string {
   return sentence
     .toLowerCase()
     .replace(/[–—]/g, "-")
+    .replace(/[‘’]/g, "'")
     .replace(/\bhalf an? hour\b/g, "30 minutes")
     .replace(new RegExp(String.raw`\b(${WORD}|\d+) and a half hours?\b`, "g"), (_, n) => `${num(n) + 0.5} hours`)
     .replace(new RegExp(String.raw`\b(${WORD}|\d+) hours? and a half\b`, "g"), (_, n) => `${num(n) + 0.5} hours`)
@@ -59,6 +60,15 @@ const CUE = /\b(?:left|remaining|remains?|battery|backup|runtime|lasts?|good for
 const FILLER = /\b(?:about|around|approximately|roughly|maybe|probably|like|only|just)\b|[~?!.]/g;
 const CUE_WINDOW = 6; // words on each side, within the same clause
 
+// Each duration is judged by the subject of its own clause.
+const CLAUSE = /[,;:]|\b(?:but|however|although|while)\b|\band\s+(?=(?:the|my)\b)/;
+// A personal device's battery is never the household's equipment runtime.
+const DEVICE = /\b(?:phone|cell|cellphone|iphone|android|mobile|laptop|tablet|ipad|watch|airpods|charger)\b/;
+// "Unknown" only counts as evidence when the clause is about the equipment, so a bare "Not sure" stays for review.
+const UNKNOWN = /\b(?:unknown|don't know|do not know|not sure|no idea|can't tell|cannot tell|can't see|cannot see)\b|\b(?:display|screen) (?:is )?(?:off|blank)\b/;
+const EQUIPMENT = /\b(?:oxygen|concentrator|ventilator|respirator|cpap|bipap|dialysis|equipment|machine|generator|battery|backup|display|screen|runtime)\b/;
+const PERCENT = /\d+\s*(?:%|percent\b)/;
+
 function isRuntime(clause: string, offset: number, length: number): boolean {
   const words = (s: string) => s.split(/\s+/).filter(Boolean);
   const before = clause.slice(0, offset);
@@ -70,13 +80,21 @@ function isRuntime(clause: string, offset: number, length: number): boolean {
 export function extractRuntime(text: string): Extraction {
   const sentences = text.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean);
   const found: { mention: Mention; evidence: string }[] = [];
+  let unknown: string | undefined; // equipment runtime stated as unknown
+  let device: string | undefined; // only a personal device's battery was mentioned
+  let percent: string | undefined;
   for (const sentence of sentences) {
-    for (let clause of normalize(sentence).split(/[,;:]|\bbut\b/)) {
+    for (let clause of normalize(sentence).split(CLAUSE)) {
+      const isDevice = DEVICE.test(clause);
+      if (isDevice && PERCENT.test(clause)) device ??= sentence;
+      if (!isDevice && PERCENT.test(clause)) percent ??= sentence;
+      if (!isDevice && UNKNOWN.test(clause) && EQUIPMENT.test(clause)) unknown ??= sentence;
       for (const [re, read] of PATTERNS) {
         clause = clause.replace(re, (...args) => {
           const [match, offset, whole] = [args[0] as string, args.at(-2) as number, args.at(-1) as string];
           const mention = read(args.slice(0, -2) as unknown as RegExpExecArray);
-          if (mention && isRuntime(whole, offset, match.length)) found.push({ mention, evidence: sentence });
+          if (mention && isDevice) device ??= sentence;
+          else if (mention && isRuntime(whole, offset, match.length)) found.push({ mention, evidence: sentence });
           return " ".repeat(match.length);
         });
       }
@@ -92,7 +110,8 @@ export function extractRuntime(text: string): Extraction {
     if (upperMin !== undefined && lowerMin > upperMin) return { kind: "needs_review", reason: "range is reversed", evidence: only.evidence };
     return { kind: "runtime", lowerMin, ...(upperMin === undefined ? {} : { upperMin }), evidence: only.evidence };
   }
-  const percent = sentences.find((s) => /\d+\s*(%|percent\b)/i.test(s));
+  if (unknown) return { kind: "needs_clarification", reason: "equipment runtime unknown", evidence: unknown };
+  if (device) return { kind: "needs_clarification", reason: "personal device battery, not equipment", evidence: device };
   if (percent) return { kind: "needs_clarification", reason: "battery percentage without runtime", evidence: percent };
   return { kind: "needs_review", reason: "no runtime found" };
 }

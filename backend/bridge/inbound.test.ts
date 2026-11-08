@@ -70,6 +70,18 @@ test("live: phone percentage records the message with runtime unset and asks one
   assert.match(calls.reply[0], /battery display/);
 });
 
+test("live: phone runtime with unknown oxygen backup records runtime unset and asks, never a receipt", async () => {
+  const { checkins, calls, deps } = fakeWorld();
+  const event = inboundText(item({ text: "My phone battery has 2 hours left but my oxygen backup is unknown." }), "imessage", "+15555550188")!;
+  assert.equal(await handle(event, "H17", "tornado-1", deps, new Set(), "LIVE"), "ingested");
+  const row = [...checkins.values()][0];
+  assert.equal(row.runtimeLowerMin, undefined);
+  assert.equal(row.runtimeUpperMin, undefined);
+  assert.equal(calls.reply.length, 1);
+  assert.match(calls.reply[0], /battery display .*oxygen concentrator/);
+  assert.ok(!/recorded/.test(calls.reply[0]));
+});
+
 test("unbound sender, outbound, group and non-text messages are not check-ins", () => {
   assert.equal(householdFor(item({ sentBy: { platform: "imessage", kind: "human", handle: "+15555550999", id: "usr_x" } }), binding), undefined);
   assert.equal(inboundText(item({ status: "sent" }), "imessage", "+15555550188"), undefined);

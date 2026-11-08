@@ -60,6 +60,29 @@ const review = (text: string) => {
   assert.ok(!("lowerMin" in x) && !("upperMin" in x), text);
 };
 
+const clarify = (text: string, reason?: string) => {
+  const x = extractRuntime(text);
+  assert.equal(x.kind, "needs_clarification", `${text} -> ${JSON.stringify(x)}`);
+  assert.ok(!("lowerMin" in x) && !("upperMin" in x), text);
+  if (reason && x.kind === "needs_clarification") assert.equal(x.reason, reason, text);
+};
+
+test("phone and other personal device durations are never equipment runtime", () => {
+  clarify("My phone battery has 2 hours left but my oxygen backup is unknown.", "equipment runtime unknown");
+  clarify("phone has 3 hours left", "personal device battery, not equipment");
+  clarify("my phone is at 20%", "personal device battery, not equipment");
+  clarify("My iPhone says 4 hours, laptop has 90 minutes", "personal device battery, not equipment");
+  assert.deepEqual(runtime("phone is dying but the concentrator battery says 45 minutes left"), [45, 45]);
+  assert.deepEqual(runtime("oxygen battery says 30 to 60 minutes, my phone has an hour"), [30, 60]);
+  assert.deepEqual(runtime("The oxygen battery has 40 minutes left and my phone has 2 hours"), [40, 40]);
+});
+
+test("equipment runtime stated as unknown asks for the display", () => {
+  clarify("not sure how long the oxygen battery lasts", "equipment runtime unknown");
+  clarify("The concentrator display is blank", "equipment runtime unknown");
+  clarify("I don’t know how much backup is left", "equipment runtime unknown");
+});
+
 test("upper bounds keep a zero lower bound", () => {
   assert.deepEqual(runtime("no more than 30 minutes left"), [0, 30]);
   assert.deepEqual(runtime("not more than 30 minutes of backup"), [0, 30]);

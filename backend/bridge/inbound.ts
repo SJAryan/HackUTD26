@@ -79,10 +79,16 @@ function spoken(x: Extract<Extraction, { kind: "runtime" }>): string {
 }
 
 // Receipt or clarifying question only. ETAs come from committed jobs (TL-05), never from here.
+// The receipt is sent only for kind "runtime"; anything else never claims a recorded backup time.
 export function replyText(x: Extraction): string | undefined {
-  if (x.kind === "runtime") return `Got it, we've recorded ${spoken(x)} of backup. A coordinator will follow up.`;
-  if (x.kind === "needs_clarification") return "Thanks. What does your equipment's battery display show, in minutes of backup left?";
-  return undefined; // needs_review: a coordinator reads the original message
+  switch (x.kind) {
+    case "runtime":
+      return `Got it, we've recorded ${spoken(x)} of backup. A coordinator will follow up.`;
+    case "needs_clarification":
+      return "Thanks. What does your equipment's battery display (for example, your oxygen concentrator's) show, in minutes of backup left?";
+    case "needs_review":
+      return undefined; // a coordinator reads the original message
+  }
 }
 
 export type Outcome = "duplicate" | "ingested" | "failed";
