@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 import { INCIDENT, fmt } from './demo/fixture';
-import { reset, useDemo } from './demo/store';
+import { AUTO_CALL_MS, placeCall, reset, useDemo } from './demo/store';
 import { Icon, type IconName } from './ui/icons';
 import { Board } from './screens/Board';
 import { Register } from './screens/Register';
@@ -67,6 +67,14 @@ export default function App() {
   const [route, go] = useRoute();
   const s = useDemo();
   const { isActive } = useSpacetimeDB();
+
+  // Automated call when the poll gets no reply. placeCall ignores repeats, so open tabs can't double-call.
+  const waiting = s.outage && !s.answer && s.call === 'none';
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setTimeout(() => placeCall('auto'), AUTO_CALL_MS);
+    return () => clearTimeout(t);
+  }, [waiting]);
 
   return (
     <div className="shell">

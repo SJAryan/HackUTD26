@@ -93,7 +93,7 @@ export function HouseholdDrawer({ row, onClose }: { row: Household; onClose: () 
     setResult(null);
     // The confirmation appears only once the reserve result comes back.
     setTimeout(() => {
-      setResult(reserve(requestId.current, DEMO_ID, option.routeId, s.caseVersion));
+      setResult(reserve(requestId.current, DEMO_ID, option.routeId, option.assetId, option.driverId, s.caseVersion));
       setPending(false);
     }, 500);
   };
@@ -123,11 +123,11 @@ export function HouseholdDrawer({ row, onClose }: { row: Household; onClose: () 
           <h3>Waiting for a reply</h3>
           <p className="sub">
             iMessage check-in sent at {fmt(s.pollSentAt ?? 151)}.
-            {s.call === 'ringing' ? ' Automated call is ringing now.' : s.call === 'missed' ? ' Call was declined.' : ' An automated call follows after 5 minutes.'}
+            {s.call === 'ringing' ? ' The call is ringing now.' : s.call === 'missed' ? ' The resident declined the call.' : ' If there is no reply, an automated call goes out at 02:36 (8 seconds in this demo).'}
           </p>
-          {s.call === 'none' && (
-            <button className="btn btn-secondary" onClick={placeCall}>
-              <Icon name="phone" size={15} /> Call now
+          {(s.call === 'none' || s.call === 'missed') && (
+            <button className="btn btn-secondary" onClick={() => placeCall('manual')}>
+              <Icon name="phone" size={15} /> {s.call === 'missed' ? 'Call again' : 'Call now'}
             </button>
           )}
         </section>

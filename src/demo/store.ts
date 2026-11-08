@@ -117,14 +117,20 @@ export function startOutage() {
   });
 }
 
-export function placeCall() {
-  if (!state.outage || state.answer || state.call === 'ringing') return;
-  set({
-    ...state,
-    clock: at(156),
-    call: 'ringing',
-    events: [...state.events, ev({ at: at(156), kind: 'outreach', who: 'Voice', text: 'No reply after 5 minutes. Automated call placed.' })],
-  });
+// The automated call goes out 5 simulated minutes after the poll (02:36) if nobody replied.
+// The demo compresses that wait to AUTO_CALL_MS of real time. A coordinator can call early,
+// or call again after the resident declines.
+export const AUTO_CALL_MS = 8000;
+
+export function placeCall(reason: 'auto' | 'manual') {
+  if (!state.outage || state.answer || state.call === 'ringing' || state.call === 'answered') return;
+  if (reason === 'auto' && state.call !== 'none') return;
+  const clock = at(156);
+  const text =
+    state.call === 'missed' ? 'Call was declined. Coordinator called again.'
+    : reason === 'auto' ? 'No reply after 5 minutes. Automated call placed.'
+    : 'Coordinator placed the call before the 5-minute mark.';
+  set({ ...state, clock, call: 'ringing', events: [...state.events, ev({ at: clock, kind: 'outreach', who: 'Voice', text })] });
 }
 
 export function answerCall(pick: boolean) {
@@ -182,8 +188,8 @@ export function confirmDelay() {
   });
 }
 
-// Same shape as the contract: reserve(jobRequestId, caseId, routeId, assetId, driverId, expectedVersion).
-export function reserve(jobRequestId: string, caseId: string, routeId: string, expectedVersion: number): Result {
+// Contract: reserve(jobRequestId, caseId, routeId, assetId, driverId, expectedVersion).
+export function reserve(jobRequestId: string, caseId: string, routeId: string, assetId: string, driverId: string, expectedVersion: number): Result {
   const route = H17_ROUTES.find((r) => r.routeId === routeId);
   if (state.job) {
     const r: Result = state.job.requestId === jobRequestId
@@ -193,6 +199,9 @@ export function reserve(jobRequestId: string, caseId: string, routeId: string, e
     return r;
   }
   if (!route || caseId !== DEMO_ID) return { kind: 'conflict', text: 'Unknown route for this case.' };
+  if (route.assetId !== assetId || route.driverId !== driverId) {
+    return { kind: 'conflict', text: `Rejected: ${routeId} does not join ${assetId} and ${driverId} for ${caseId}. Nothing was written.` };
+  }
   if (expectedVersion !== state.caseVersion) {
     const r: Result = { kind: 'conflict', text: 'The case changed since you opened it. Review the new margin and try again.' };
     set({ ...state, last: r });
@@ -200,8 +209,8 @@ export function reserve(jobRequestId: string, caseId: string, routeId: string, e
   }
   const clock = at(161);
   const eta = route.readyAt + (state.delayConfirmed && routeId === DELAY.routeId ? DELAY.minutes : 0);
-  const job: Job = { jobId: 'J-1', requestId: jobRequestId, routeId, assetId: route.assetId, driverId: route.driverId, version: 1, status: 'reserved', eta };
-  const r: Result = { kind: 'committed', text: `Reserved ${route.assetId} with ${route.driverId} on ${routeId}. Job ${job.jobId}.` };
+  const job: Job = { jobId: 'J-1', requestId: jobRequestId, routeId, assetId, driverId, version: 1, status: 'reserved', eta };
+  const r: Result = { kind: 'committed', text: `Reserved ${assetId} with ${driverId} on ${routeId}. Job ${job.jobId}.` };
   set({
     ...state,
     clock,
