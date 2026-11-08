@@ -131,12 +131,12 @@ const job = table(
     id: t.u64().primaryKey().autoInc(),
     requestId: t.string().unique(), // jobRequestId from the client; a replay is a no-op
     incidentId: t.string().index('btree'),
-    householdId: t.string(),
+    householdId: t.string().index('btree'),
     routeId: t.string(),
     driverId: t.string().index('btree'),
     assetId: t.string(),
-    version: t.u32(),
-    status: t.string(), // 'assigned'
+    version: t.u32(), // bumped on every status change; updateJob checks it
+    status: t.string(), // 'assigned' -> 'arrived' (driver) -> 'delivered' (resident)
     etaAt: t.timestamp(), // ready-at from the dispatch rules at commit time
     createdBy: t.identity(),
     createdAt: t.timestamp(),
@@ -159,9 +159,29 @@ const outbox = table(
   }
 );
 
+// The job thread: chat text plus arrival/confirmation events, in one ordered timeline.
+const jobMessage = table(
+  { name: 'job_message' },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    // `${jobId}:${sender identity}:${clientMessageId}`; a repeated send is a no-op.
+    dedupeKey: t.string().unique(),
+    incidentId: t.string().index('btree'),
+    jobId: t.u64().index('btree'),
+    seq: t.u32(), // 1, 2, 3... per job; order by this, not by id
+    kind: t.string(), // 'text' | 'arrived' | 'delivered'
+    senderRole: t.string(), // 'resident' | 'driver'
+    senderLabel: t.string(), // driver name or household ID, for display
+    senderIdentity: t.identity(),
+    clientMessageId: t.string(),
+    text: t.string(),
+    sentAt: t.timestamp(),
+  }
+);
+
 const spacetimedb = schema({
   config, invite, member, incident, household, asset, driver,
-  route, routeReport, checkin, job, outbox,
+  route, routeReport, checkin, job, outbox, jobMessage,
 });
 export default spacetimedb;
 
@@ -424,6 +444,77 @@ export const reserve = spacetimedb.reducer(
   }
 );
 
+// ---- Job thread (D -> A): only the job's resident and assigned driver can write ----
+
+type JobRow = NonNullable<ReturnType<Ctx['db']['job']['id']['find']>>;
+
+function participant(ctx: Ctx, j: JobRow) {
+  const me = ctx.db.member.identity.find(ctx.sender);
+  if (me && me.incidentId === j.incidentId) {
+    if (me.role === 'resident' && me.subjectId === j.householdId) {
+      return { role: 'resident', label: j.householdId };
+    }
+    if (me.role === 'driver' && me.subjectId === j.driverId) {
+      return { role: 'driver', label: ctx.db.driver.id.find(j.driverId)?.name ?? j.driverId };
+    }
+  }
+  throw new SenderError(`forbidden: not a participant in job ${j.id}`);
+}
+
+function appendToThread(
+  ctx: Ctx, j: JobRow, who: { role: string; label: string },
+  kind: string, clientMessageId: string, text: string
+) {
+  const dedupeKey = `${j.id}:${ctx.sender.toHexString()}:${clientMessageId}`;
+  if (ctx.db.jobMessage.dedupeKey.find(dedupeKey)) return; // repeated send: no new row
+  const seq = [...ctx.db.jobMessage.jobId.filter(j.id)].length + 1; // reducers run one at a time
+  ctx.db.jobMessage.insert({
+    id: 0n, dedupeKey, incidentId: j.incidentId, jobId: j.id, seq, kind,
+    senderRole: who.role, senderLabel: who.label, senderIdentity: ctx.sender,
+    clientMessageId, text, sentAt: ctx.timestamp,
+  });
+}
+
+export const postJobMessage = spacetimedb.reducer(
+  { jobId: t.u64(), clientMessageId: t.string(), text: t.string() },
+  (ctx, args) => {
+    const j = ctx.db.job.id.find(args.jobId);
+    if (!j) throw new SenderError(`unknown job ${args.jobId}`);
+    const who = participant(ctx, j);
+    const text = args.text.trim();
+    if (!text || text.length > 1000) throw new SenderError('message must be 1-1000 characters');
+    if (!args.clientMessageId) throw new SenderError('clientMessageId is required');
+    appendToThread(ctx, j, who, 'text', args.clientMessageId, text);
+  }
+);
+
+// Allowed status changes: who may make them and from which status.
+const TRANSITIONS: Record<string, { role: string; from: string }> = {
+  arrived: { role: 'driver', from: 'assigned' },
+  delivered: { role: 'resident', from: 'arrived' },
+};
+
+export const updateJob = spacetimedb.reducer(
+  { jobId: t.u64(), expectedVersion: t.u32(), status: t.string() },
+  (ctx, args) => {
+    const j = ctx.db.job.id.find(args.jobId);
+    if (!j) throw new SenderError(`unknown job ${args.jobId}`);
+    const who = participant(ctx, j);
+    const rule = TRANSITIONS[args.status];
+    if (!rule) throw new SenderError(`unknown status ${args.status}`);
+    if (who.role !== rule.role) throw new SenderError(`forbidden: only the ${rule.role} can mark ${args.status}`);
+    if (j.version !== args.expectedVersion) {
+      throw new SenderError(`conflict: job ${j.id} is at version ${j.version}, expected ${args.expectedVersion}`);
+    }
+    if (j.status !== rule.from) {
+      throw new SenderError(`conflict: job ${j.id} is ${j.status}, not ${rule.from}`);
+    }
+    const next = ctx.db.job.id.update({ ...j, version: j.version + 1, status: args.status });
+    const text = args.status === 'arrived' ? `${who.label} arrived` : `${who.label} confirmed delivery`;
+    appendToThread(ctx, next, who, args.status, `status:${args.status}:v${next.version}`, text);
+  }
+);
+
 // ---- Views: each client sees only what its role allows ----
 
 export const myRole = spacetimedb.view(
@@ -502,6 +593,32 @@ export const driverJobs = spacetimedb.view(
   ctx => {
     const me = ctx.db.member.identity.find(ctx.sender);
     return me?.role === 'driver' ? [...ctx.db.job.driverId.filter(me.subjectId)] : [];
+  }
+);
+
+// A resident sees only their own household's jobs.
+export const residentJobs = spacetimedb.view(
+  { name: 'resident_jobs', public: true },
+  t.array(job.rowType),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    return me?.role === 'resident' ? [...ctx.db.job.householdId.filter(me.subjectId)] : [];
+  }
+);
+
+// Threads for the jobs this session takes part in; a coordinator sees its incident's threads.
+export const jobMessages = spacetimedb.view(
+  { name: 'job_messages', public: true },
+  t.array(jobMessage.rowType),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    if (!me) return [];
+    if (me.role === 'coordinator') return [...ctx.db.jobMessage.incidentId.filter(me.incidentId)];
+    const jobs =
+      me.role === 'driver' ? [...ctx.db.job.driverId.filter(me.subjectId)]
+      : me.role === 'resident' ? [...ctx.db.job.householdId.filter(me.subjectId)]
+      : [];
+    return jobs.flatMap(j => [...ctx.db.jobMessage.jobId.filter(j.id)]);
   }
 );
 

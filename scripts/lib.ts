@@ -52,12 +52,18 @@ export function waitFor(label: string, check: () => boolean, ms = 5_000) {
 
 type Query = Parameters<ReturnType<DbConnection['subscriptionBuilder']>['subscribe']>[0];
 
-export function connect(label: string, queries: Query): Promise<DbConnection> {
+// Each session's auth token, so a check can reconnect as the same identity.
+const tokens = new WeakMap<DbConnection, string>();
+export const tokenOf = (conn: DbConnection) => tokens.get(conn)!;
+
+export function connect(label: string, queries: Query, token?: string): Promise<DbConnection> {
   return within(10_000, `${label} connect`, new Promise((resolve, reject) => {
     DbConnection.builder()
       .withUri(HOST)
       .withDatabaseName(DB)
-      .onConnect(c => {
+      .withToken(token)
+      .onConnect((c, _identity, newToken) => {
+        tokens.set(c, newToken);
         open.push(c);
         c.subscriptionBuilder()
           .onApplied(() => resolve(c))
