@@ -1,0 +1,31 @@
+{
+  "name": "time-left",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "stdb:generate": "spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb -y",
+    "stdb:publish:local": "spacetime publish --server local --module-path spacetimedb time-left -y",
+    "stdb:reset:local": "spacetime publish --server local --module-path spacetimedb time-left --delete-data=always -y",
+    "check:tl01": "tsx scripts/two-session-check.ts"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "spacetimedb": "2.14.*"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^5.0.2",
+    "tsx": "4.23.15",
+    "typescript": "~5.6.2",
+    "vite": "^7.1.5"
+  },
+  "engines": {
+    "node": "^22.23.4 || ^24.22.1 || >=26.12.1"
+  }
+}
