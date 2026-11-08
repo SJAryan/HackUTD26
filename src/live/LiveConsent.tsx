@@ -36,12 +36,22 @@ const DEFAULTS = {
 export function LiveRegister({ go }: { go: (route: string) => void }) {
   const [profiles] = useTable(tables.myProfile);
   const enroll = useReducer(reducers.enrollPreparedness);
+  const confirmNeed = useReducer(reducers.confirmSuggestedNeed);
+  const [confirmed] = useTable(tables.myConfirmedNeed);
   const [f, setF] = useState(DEFAULTS);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [kept, setKept] = useState<KeptNeed[]>([]);
   const [describe, setDescribe] = useState(false);
   // Stable until the profile lands, so a retried submit is a no-op on the server.
   const enrollmentId = useRef(newId());
+  // One confirmation per household (A's confirmSuggestedNeed), reused on retry. Only a need the
+  // resident confirmed as suggested is sent; a correction lives in the equipment text.
+  const confirmationId = useRef(newId());
+  const toConfirm = kept.find((k) => !k.corrected);
+  const saveNeed = () => {
+    if (!toConfirm) return Promise.resolve();
+    return confirmNeed({ confirmationId: confirmationId.current, needId: toConfirm.id });
+  };
   const profile = profiles[0];
   const { role } = useMyRole();
 
@@ -57,6 +67,14 @@ export function LiveRegister({ go }: { go: (route: string) => void }) {
           <p className="sub">
             Household {profile.householdId}, {label(NEEDS, profile.medicalNeed).toLowerCase()}. Registered at {hhmm(ms(profile.enrolledAt))}. Synthetic demo resident.
           </p>
+          {/* Read back from the server, so this only appears once the confirmation is stored. */}
+          {confirmed[0] && <p className="sub">Confirmed from your policy: {confirmed[0].needId === 'step_free_access' ? 'step-free access' : 'powered equipment'}. The response team sees it as self-confirmed.</p>}
+          {!confirmed[0] && toConfirm && status.kind === 'error' && (
+            <p className="result result-conflict" role="alert">
+              <Icon name="alert" size={15} /> Your registration is saved, but the policy confirmation was not: {status.text}{' '}
+              <button className="link-btn" onClick={() => saveNeed().then(() => setStatus({ kind: 'idle' })).catch((err: unknown) => setStatus({ kind: 'error', text: errorText(err) }))}>Try again</button>
+            </p>
+          )}
           <div className="row-actions">
             <button className="btn btn-quiet" onClick={() => go('resident')}>Open the resident phone</button>
           </div>
@@ -75,7 +93,9 @@ export function LiveRegister({ go }: { go: (route: string) => void }) {
     }
     setStatus({ kind: 'sending' });
     enroll({ enrollmentId: enrollmentId.current, ...f, backupDevice: f.backupDevice.trim(), address: f.address.trim() })
-      // Success shows the profile from myProfile, not from this promise.
+      // Success shows the profile from myProfile, not from this promise. The confirmation goes
+      // after it, so a failed registration never leaves a confirmation without a profile.
+      .then(saveNeed)
       .then(() => setStatus({ kind: 'idle' }))
       .catch((err: unknown) => setStatus({ kind: 'error', text: errorText(err) }));
   };
@@ -97,7 +117,7 @@ export function LiveRegister({ go }: { go: (route: string) => void }) {
       <form className="site-card form" onSubmit={submit}>
         <p className="fixture-note">Prefilled with a synthetic resident. Your invite links this browser to its household.</p>
         {/* Live mode saves only the need chosen below; A's enrollPreparedness has no field for the confirmation yet. */}
-        {role?.subjectId && <PolicyCheck householdId={role.subjectId} saved={false} equipmentInputId="live-equipment" onChange={(next) => {
+        {role?.subjectId && <PolicyCheck householdId={role.subjectId} mode="live" equipmentInputId="live-equipment" onChange={(next) => {
           setKept(next);
           setDescribe(false);
           setF((x) => ({

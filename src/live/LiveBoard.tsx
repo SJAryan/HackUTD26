@@ -160,6 +160,8 @@ function LiveDrawer({ h, c, incidentId, onClose }: { h: HouseholdRow; c: LiveCas
   // Stable per household and route, so a retried click is a duplicate, never a second job.
   const requestIds = useRef(new Map<string, string>());
 
+  const [needs] = useTable(tables.coordinatorConfirmedNeeds);
+  const need = needs.find((n) => n.householdId === h.id);
   const last = latestCheckin(checkins, h.id);
   const job = jobs.find((j) => j.id === h.activeJobId);
   const chosen = c.options.find((o) => o.route.id === (routeId ?? c.best?.route.id)) ?? null;
@@ -227,6 +229,7 @@ function LiveDrawer({ h, c, incidentId, onClose }: { h: HouseholdRow; c: LiveCas
         <div>
           <h2>{h.id} <span className="tag">Live</span></h2>
           <p className="sub">{h.label}, version {h.version}</p>
+          {need && <p className="sub">Need: {need.dispatchNeed ? `${need.dispatchNeed} backup` : 'step-free access'}, {need.label}</p>}
         </div>
         <LanePill lane={c.lane} />
         <button className="icon-btn" onClick={onClose} aria-label="Close details"><Icon name="close" /></button>

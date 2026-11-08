@@ -74,7 +74,7 @@ export function Register({ go }: { go: (route: string) => void }) {
       <form className="site-card form" onSubmit={submit}>
         <p className="fixture-note">Prefilled with a synthetic resident for the demo.</p>
         {/* A confirmed equipment need selects home oxygen, the only need that runs end to end. */}
-        <PolicyCheck householdId={DEMO_ID} saved equipmentInputId="reg-equipment" onChange={(kept) => {
+        <PolicyCheck householdId={DEMO_ID} mode="fixture" equipmentInputId="reg-equipment" onChange={(kept) => {
           setDescribe(false);
           setF((x) => ({
             ...x,
