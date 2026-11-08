@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { useReducer, useTable } from 'spacetimedb/react';
 import { DELAY, DEMO_ID, NEED_LABEL, fmt, signed, type Household, type Option } from '../demo/fixture';
+import { liveError, liveSuccess } from '../demo/liveReserve';
 import { confirmDelay, h17Case, placeCall, reserve, useDemo, type Event, type JobStatus, type Result } from '../demo/store';
+import { reducers, tables } from '../module_bindings';
 import { Icon, type IconName } from '../ui/icons';
 import { LanePill } from './Board';
 
@@ -77,6 +80,20 @@ export function HouseholdDrawer({ row, onClose }: { row: Household; onClose: () 
   const [result, setResult] = useState<Result | null>(null);
   const requestId = useRef(`req-${Math.random().toString(36).slice(2, 8)}`);
 
+  // TL-07 (B): live only when this session is a coordinator for H17's own incident.
+  // Without that role every view below is empty and the drawer runs D's fixture flow unchanged.
+  const [roles] = useTable(tables.myRole);
+  const [liveHomes] = useTable(tables.coordinatorHouseholds);
+  const [liveRouteRows] = useTable(tables.coordinatorRoutes);
+  const [liveJobs] = useTable(tables.coordinatorJobs);
+  const reserveLive = useReducer(reducers.reserve);
+  const jobsRef = useRef(liveJobs);
+  jobsRef.current = liveJobs;
+  const role = roles[0];
+  const liveHome = liveHomes.find((h) => h.id === DEMO_ID);
+  const live = role?.role === 'coordinator' && !!liveHome && liveHome.incidentId === role.incidentId;
+  const liveRoutes = liveRouteRows.filter((r) => r.householdId === DEMO_ID).sort((a, b) => a.id.localeCompare(b.id));
+
   // Follow the rules' best option until the coordinator picks one.
   const chosen = routeId ?? c?.best?.routeId ?? null;
   useEffect(() => setRouteId(null), [s.delayConfirmed]);
@@ -88,7 +105,34 @@ export function HouseholdDrawer({ row, onClose }: { row: Household; onClose: () 
 
   const reg = s.registration!;
   const option = c?.options.find((o) => o.routeId === chosen);
+  // Live IDs (route, asset, driver) come from coordinator_routes, not the fixture.
+  const liveRoute = liveRoutes.find((r) => r.id === chosen) ?? (routeId ? undefined : liveRoutes[0]);
+  const doReserveLive = async () => {
+    if (!liveRoute || !liveHome || pending) return;
+    const rid = requestId.current; // stable per drawer: a retry or second click is a duplicate
+    const existedBefore = jobsRef.current.some((j) => j.requestId === rid);
+    setPending(true);
+    setResult(null);
+    try {
+      await reserveLive({
+        jobRequestId: rid, caseId: DEMO_ID, routeId: liveRoute.id, assetId: liveRoute.assetId,
+        driverId: liveRoute.driverId, expectedVersion: liveHome.version,
+      });
+      // The coordinator_jobs update can trail the reducer reply by a moment.
+      let job = jobsRef.current.find((j) => j.requestId === rid);
+      for (let i = 0; i < 20 && !job; i++) {
+        await new Promise((r) => setTimeout(r, 100));
+        job = jobsRef.current.find((j) => j.requestId === rid);
+      }
+      setResult(liveSuccess(existedBefore, job, liveRoute.assetId, liveRoute.driverId, liveRoute.id));
+    } catch (err) {
+      setResult(liveError(err));
+    } finally {
+      setPending(false);
+    }
+  };
   const doReserve = () => {
+    if (live) return void doReserveLive();
     if (!option || pending) return;
     setPending(true);
     setResult(null);
@@ -104,7 +148,16 @@ export function HouseholdDrawer({ row, onClose }: { row: Household; onClose: () 
     <aside className="drawer" aria-label={`${DEMO_ID} details`}>
       <header className="drawer-head">
         <div>
-          <h2>{DEMO_ID} <span className="tag">Synthetic</span></h2>
+          <h2>
+            {DEMO_ID} <span className="tag">Synthetic</span>
+            <span
+              className="tag"
+              title={live ? 'Reserve calls the SpacetimeDB reserve reducer' : 'Reserve runs on the local fixture'}
+              style={live ? { background: 'var(--green-wash)', borderColor: '#bfe3cc', color: 'var(--green)' } : undefined}
+            >
+              {live ? 'Live' : 'Fixture'}
+            </span>
+          </h2>
           <p className="sub">{reg.name}, {reg.age}, {reg.address}</p>
         </div>
         <LanePill lane={row.lane} />
@@ -164,7 +217,28 @@ export function HouseholdDrawer({ row, onClose }: { row: Household; onClose: () 
         </section>
       )}
 
-      {c?.window && !s.job && (
+      {live && liveRoutes.length > 0 && (
+        <section className="block">
+          <h3>Options</h3>
+          <p className="sub">Live routes for {DEMO_ID}, case version {liveHome!.version}.</p>
+          <div className="routes" role="radiogroup" aria-label="Route">
+            {liveRoutes.map((r) => (
+              <label key={r.id} className={`route ${r.id === liveRoute?.id ? 'on' : ''}`}>
+                <input type="radio" name="route" checked={r.id === liveRoute?.id} onChange={() => setRouteId(r.id)} disabled={pending} />
+                <span className="route-head">
+                  <b>{r.id}</b>
+                  <span className="sub">{r.assetId}, {r.driverId}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <button className="btn btn-primary btn-block" onClick={doReserve} disabled={!liveRoute || pending}>
+            {pending ? 'Reserving…' : `Reserve ${liveRoute?.assetId} and send ${liveRoute?.driverId} on ${liveRoute?.id}`}
+          </button>
+        </section>
+      )}
+
+      {!live && c?.window && !s.job && (
         <section className="block">
           <h3>Options</h3>
           <p className="sub">Margin is when backup runs out minus when help can be there.</p>
@@ -181,8 +255,10 @@ export function HouseholdDrawer({ row, onClose }: { row: Household; onClose: () 
         </section>
       )}
 
-      {result && result.kind !== 'committed' && (
-        <p className={`result result-${result.kind}`} role="status"><Icon name="alert" size={15} /> {result.text}</p>
+      {result && (live || result.kind !== 'committed') && (
+        <p className={`result result-${result.kind}`} role="status">
+          <Icon name={result.kind === 'committed' ? 'checkCircle' : 'alert'} size={15} /> {result.text}
+        </p>
       )}
 
       {s.job && (
