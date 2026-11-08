@@ -1,6 +1,41 @@
-TIME LEFT | Shared context for teammates and Claude Code
+BEFORE ZERO (formerly Time Left) | Shared context for teammates and Claude Code
 HackUTD 2026 • November 7–8 • Dallas time
 Read this first. The project scope below incorporates the latest State Farm and Spacetime conversations. Use the issue backlog for assignments and deadlines. Verify progress against the current repo and running app; the screenshot establishes the starter layout only. This document describes intended behavior. Test results belong in the issue or PR once observed.
+
+UPDATE: BEFORE ZERO, THE REAL STORY AND THE DEMO (Saturday evening)
+The product is now called Before Zero. Where this section conflicts with anything further down, this section wins. Older sections still say "Time Left"; read that as Before Zero.
+
+The real story (opening only)
+James Thomas Jones, 83, of Houston, had COPD and relied on a respirator. During Winter Storm Uri, on Feb 16, 2021, his power came back around 10pm and his backup was charging. At 2:30am the power went out again and stayed out for about 24 hours. His backup ran out, and he died soon after his family got him to the ER on Feb 17. These details come from his family's lawsuit.
+
+Opening script (about 20 seconds):
+"During Winter Storm Uri, James Thomas Jones, 83, relied on a respirator to breathe. At 2:30 in the morning his power went out again, and over the next hours his backup battery ran down. No one outside his home knew how much time he had left. Texas has a registry of people like Mr. Jones, but nothing that tells a coordinator whose backup runs out first. That's what we built."
+
+Rules for using his story:
+- Say his name once, respectfully, in the opening, then move straight to the product.
+- Never say or imply "our app would have saved him." Let the judges draw that conclusion.
+- Present the details as his family's account, from their lawsuit. Do not name or blame any utility.
+- He does not appear in the app, seeds, fixtures, screenshots or demo data. The demo resident is a synthetic registrant: household H17, 81, COPD, home oxygen, labeled synthetic. Do not reuse his name, age, address or dates in any data.
+
+The problem we solve
+Texas keeps a registry of medically fragile residents (STEAR), but a list of names does not tell a coordinator whose backup runs out first. Before Zero checks in with every registered household, compares each household's deadline with how long the right help takes to arrive, ranks everyone by that margin, follows up with anyone who goes silent, and makes sure the last battery cannot go to two houses. "AI reads, code decides." Numbers are reported backup time and arrival estimates; no predicted countdowns and no lives-saved claims.
+
+The demo, in order (the frontend must be able to show every step)
+1. Register before the storm. On the website, synthetic resident H17 joins the STEAR-style registry: need (home oxygen), backup device, address, preferred contact (iMessage, phone call). D builds the page; A adds the enrollment reducer. This is TL-09's enrollment, now part of the main demo.
+2. The incident. A winter freeze outage hits the zip code at 2:30am. The coordinator board loads the registered households (about 200 synthetic) in four lanes: Act now, Watch, Unknown, Silent. A seeds; C supplies the fixture.
+3. Outreach. Photon sends H17 an iMessage poll, "Backup left? Under 30 min / 30 to 60 / 1 to 2 hrs / 2+ hrs / Not sure", and places a phone call if there is no reply. B owns this. Use the phone call only if it works on the test line; otherwise show iMessage only and say so (TL-14 moves up to "in the demo if feasible").
+4. Response. The resident answers with how much oxygen backup is left. The AI reads it, the code computes the margin, and H17 lands in a lane with its source message and timestamp. B extracts; C computes; A stores.
+5. Dispatch, fast. The coordinator reserves the closest compatible battery and the fastest driver (Ana). The household gets "Battery arriving in N min, driver: Ana" only after the reservation commits. The driver screen shows the address and the job. A, C, D and B.
+6. Close. A silent household with a callback owner and due time. Keep the last-battery race and the resident-driver chat ready for Spacetime questions.
+
+Demo numbers: C locks them in TL-03 and posts them. Pitch draft: the reply lands in Watch at +10; a confirmed 20-minute road delay drops it to -10 and Act now, and a closer battery is suggested. Until C posts, the screens keep the TL-03 numbers (+17 / -3 / +6), labeled as fixture.
+
+What this changes further down
+- Lead incident is the winter freeze. The tornado becomes the second incident, or is cut if time runs short.
+- Medical need types are in scope: home oxygen first; dialysis and no-heat if time allows. The old "avoid a medical danger countdown" line is replaced by the rules above.
+- Website registration is part of the main demo. The State Farm agent-contact request stays optional, after delivery.
+- Phone-call outreach is in the demo if the test line supports voice.
+- The side-entrance chat is now an optional Spacetime proof, not the opening moment.
 
 HOW TO START A NEW CHAT
 Paste: “Use the attached Time Left context. I’m member [letter]. Tell me what I own, who needs my output, and the first unfinished issue to take. If you have repo access, inspect the current branch and issue status first. Show how I can verify my deliverable on the same demo case as the team.”
@@ -20,6 +55,7 @@ Photon's reps left before the team could get feedback. Use the beta API for a re
 Organizer confirmed up to three company tracks plus one HackUTD track. Target State Farm, Build on Spacetime and Photon subject to demonstrated eligibility. No separate app is needed for each sponsor.
 
 THE MOMENT TO SHOW
+Superseded by the UPDATE section at the top: synthetic H17 registers, the freeze outage hits at 2:30am, Photon reaches out, the resident replies with backup left, and a driver is dispatched. Original text kept for reference:
 Use a synthetic household whose equipment display reports 30–60 minutes. A coordinator can see why a delayed route is now too late on the conservative estimate. After assignment the judge can type “Can you use the side entrance?” and see Ana reply. Show that a silent household still has a callback owner. A resident who skips State Farm outreach receives the same assistance. Numbers describe equipment readiness and arrival estimates; avoid a medical danger countdown or claims about lives saved.
 
 TIME LEFT | Team build plan and GitHub issues
