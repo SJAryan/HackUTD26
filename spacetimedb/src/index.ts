@@ -633,12 +633,18 @@ export const jobMessages = spacetimedb.view(
   }
 );
 
-// B's worker reads committed intents for its incident.
+// B's worker reads committed intents for its incident, only while their job is still current:
+// once updateJob moves a job on (arrived/delivered bumps its version), its old intents drop out,
+// so the bridge can never send a stale ETA.
 export const bridgeOutbox = spacetimedb.view(
   { name: 'bridge_outbox', public: true },
   t.array(outbox.rowType),
   ctx => {
     const me = ctx.db.member.identity.find(ctx.sender);
-    return me?.role === 'bridge' ? [...ctx.db.outbox.incidentId.filter(me.incidentId)] : [];
+    if (me?.role !== 'bridge') return [];
+    return [...ctx.db.outbox.incidentId.filter(me.incidentId)].filter(row => {
+      const job = ctx.db.job.id.find(row.jobId);
+      return job?.status === 'assigned' && job.version === row.jobVersion;
+    });
   }
 );
