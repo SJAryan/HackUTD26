@@ -37,6 +37,7 @@ import {
 import ClaimFollowupReducer from "./claim_followup_reducer";
 import ClaimInviteReducer from "./claim_invite_reducer";
 import ConfirmRouteReportReducer from "./confirm_route_report_reducer";
+import ConfirmSuggestedNeedReducer from "./confirm_suggested_need_reducer";
 import CreateInviteReducer from "./create_invite_reducer";
 import EnrollPreparednessReducer from "./enroll_preparedness_reducer";
 import IngestCheckinReducer from "./ingest_checkin_reducer";
@@ -57,6 +58,7 @@ import BridgeCheckinsRow from "./bridge_checkins_table";
 import BridgeOutboxRow from "./bridge_outbox_table";
 import CoordinatorAssetsRow from "./coordinator_assets_table";
 import CoordinatorCheckinsRow from "./coordinator_checkins_table";
+import CoordinatorConfirmedNeedsRow from "./coordinator_confirmed_needs_table";
 import CoordinatorDriversRow from "./coordinator_drivers_table";
 import CoordinatorFollowupAuditRow from "./coordinator_followup_audit_table";
 import CoordinatorFollowupsRow from "./coordinator_followups_table";
@@ -70,6 +72,7 @@ import DriverJobsRow from "./driver_jobs_table";
 import JobMessagesRow from "./job_messages_table";
 import MyAgentDeclineRow from "./my_agent_decline_table";
 import MyAgentRequestRow from "./my_agent_request_table";
+import MyConfirmedNeedRow from "./my_confirmed_need_table";
 import MyIncidentRow from "./my_incident_table";
 import MyProfileRow from "./my_profile_table";
 import MyRoleRow from "./my_role_table";
@@ -107,6 +110,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, CoordinatorCheckinsRow),
+  coordinatorConfirmedNeeds: __table({
+    name: 'coordinator_confirmed_needs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorConfirmedNeedsRow),
   coordinatorDrivers: __table({
     name: 'coordinator_drivers',
     indexes: [
@@ -198,6 +208,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyAgentRequestRow),
+  myConfirmedNeed: __table({
+    name: 'my_confirmed_need',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyConfirmedNeedRow),
   myIncident: __table({
     name: 'my_incident',
     indexes: [
@@ -233,6 +250,7 @@ const reducersSchema = __reducers(
   __reducerSchema("claim_followup", ClaimFollowupReducer),
   __reducerSchema("claim_invite", ClaimInviteReducer),
   __reducerSchema("confirm_route_report", ConfirmRouteReportReducer),
+  __reducerSchema("confirm_suggested_need", ConfirmSuggestedNeedReducer),
   __reducerSchema("create_invite", CreateInviteReducer),
   __reducerSchema("enroll_preparedness", EnrollPreparednessReducer),
   __reducerSchema("ingest_checkin", IngestCheckinReducer),

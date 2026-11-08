@@ -1,6 +1,8 @@
 import { schema, table, t, SenderError, type InferSchema, type ReducerCtx } from 'spacetimedb/server';
 import { ScheduleAt, Timestamp } from 'spacetimedb';
 import { readyAt } from './rules';
+import { suggestNeeds, type ConfirmedNeed, type NeedSuggestion } from './domain/suggest';
+import { policySignals } from '../../fixtures/policy-signals';
 
 // TL-05: private state, role-scoped views and atomic dispatch. All seed data is synthetic.
 // Tables are private; clients read through the views at the bottom of this file.
@@ -224,6 +226,21 @@ const agentDecline = table(
   }
 );
 
+// TL-15: a need the resident confirmed (or corrected) from a policy-based suggestion.
+// Stores only the need, never the policy signals, sources or confidence behind it.
+// Skip stores nothing. Dispatch never reads this table; household.need is unchanged.
+const confirmedNeed = table(
+  { name: 'confirmed_need' },
+  {
+    householdId: t.string().primaryKey(),
+    confirmationId: t.string().unique(), // stable per confirm click; a retry is a no-op
+    incidentId: t.string().index('btree'),
+    needId: t.string(), // NeedSuggestion['id']: 'powered_equipment' | 'step_free_access'
+    dispatchNeed: t.option(t.string()), // resource kind; none for step-free access
+    confirmedAt: t.timestamp(),
+  }
+);
+
 // ---- TL-11: check-in rounds, silent follow-ups and callback ownership ----
 
 // One outreach round per household at a time. Silent when due without a verified reply.
@@ -310,7 +327,7 @@ const jobRelease = table(
 const spacetimedb = schema({
   config, invite, member, incident, household, asset, driver,
   route, routeReport, checkin, job, outbox, jobMessage, profile, agentContact, agentDecline,
-  checkinRound, followup, followupAudit, followupConfig, followupTimer, jobRelease,
+  checkinRound, followup, followupAudit, followupConfig, followupTimer, jobRelease, confirmedNeed,
 });
 export default spacetimedb;
 
@@ -428,6 +445,7 @@ export const resetIncident = spacetimedb.reducer({ incidentId: t.string() }, (ct
   for (const r of [...db.profile.incidentId.filter(incidentId)]) db.profile.householdId.delete(r.householdId);
   for (const r of [...db.agentContact.incidentId.filter(incidentId)]) db.agentContact.id.delete(r.id);
   for (const r of [...db.agentDecline.incidentId.filter(incidentId)]) db.agentDecline.householdId.delete(r.householdId);
+  for (const r of [...db.confirmedNeed.incidentId.filter(incidentId)]) db.confirmedNeed.householdId.delete(r.householdId);
   // Seeded entities: removed and recreated from the seed, so activeJobIds, versions, runtimes,
   // confirmed delays and freeAt all return to seed values anchored to now.
   for (const r of routeIds) db.route.id.delete(r);
@@ -780,6 +798,42 @@ export const skipAgentContact = spacetimedb.reducer(ctx => {
   });
 });
 
+// TL-15: the dispatch need for each of C's suggestion IDs (domain/suggest.ts). The server
+// derives it, so a client can never choose a resource kind.
+const CONFIRMABLE_NEEDS: Record<NeedSuggestion['id'], Pick<ConfirmedNeed, 'dispatchNeed'>> = {
+  powered_equipment: { dispatchNeed: 'battery' },
+  step_free_access: {},
+};
+const isConfirmable = (id: string): id is NeedSuggestion['id'] =>
+  Object.prototype.hasOwnProperty.call(CONFIRMABLE_NEEDS, id);
+
+// Confirm and Correct both send the kept needId. Skip sends nothing, so nothing is stored.
+export const confirmSuggestedNeed = spacetimedb.reducer(
+  { confirmationId: t.string(), needId: t.string() },
+  (ctx, { confirmationId, needId }) => {
+    const me = requireResident(ctx);
+    if (!confirmationId) throw new SenderError('confirmationId is required');
+    const same = ctx.db.confirmedNeed.confirmationId.find(confirmationId);
+    if (same) {
+      if (same.householdId === me.subjectId) return; // retry: nothing new
+      throw new SenderError('conflict: confirmationId already used');
+    }
+    if (!isConfirmable(needId)) throw new SenderError(`unknown needId ${needId}`);
+    const done = ctx.db.confirmedNeed.householdId.find(me.subjectId);
+    if (done) throw new SenderError(`conflict: ${me.subjectId} already confirmed ${done.needId}`);
+    // Only a need C's rules actually suggest for this household, so "self-confirmed via
+    // preparedness profile" is true. The signals are the same synthetic fixture the screen uses.
+    const signals = policySignals.find(s => s.householdId === me.subjectId);
+    if (!signals || !suggestNeeds(signals).some(s => s.id === needId)) {
+      throw new SenderError(`not suggested: ${me.subjectId} was not offered ${needId}`);
+    }
+    ctx.db.confirmedNeed.insert({
+      householdId: me.subjectId, confirmationId, incidentId: me.incidentId, needId,
+      dispatchNeed: CONFIRMABLE_NEEDS[needId].dispatchNeed, confirmedAt: ctx.timestamp,
+    });
+  }
+);
+
 // ---- TL-11: rounds, silent follow-ups, callback ownership; TL-05 release ----
 
 const DEFAULT_FOLLOWUP_SEC = 300; // 5 minutes
@@ -1096,6 +1150,38 @@ export const coordinatorRegistryStats = spacetimedb.view(
       registrations: [...ctx.db.profile.incidentId.filter(me.incidentId)].length,
       agentOptIns: [...ctx.db.agentContact.incidentId.filter(me.incidentId)].length,
     }];
+  }
+);
+
+// TL-15: the resident's own confirmation, so the screen shows "Confirmed" after a reload.
+export const myConfirmedNeed = spacetimedb.view(
+  { name: 'my_confirmed_need', public: true },
+  t.option(confirmedNeed.rowType),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    return me?.role === 'resident' ? ctx.db.confirmedNeed.householdId.find(me.subjectId) ?? undefined : undefined;
+  }
+);
+
+const ConfirmedNeedRow = t.row('ConfirmedNeedRow', {
+  householdId: t.string().primaryKey(),
+  needId: t.string(),
+  dispatchNeed: t.option(t.string()),
+  label: t.string(), // always 'self-confirmed via preparedness profile'
+  confirmedAt: t.timestamp(),
+});
+
+// TL-15: coordinators see which households confirmed which need. Never sources or policy data.
+export const coordinatorConfirmedNeeds = spacetimedb.view(
+  { name: 'coordinator_confirmed_needs', public: true },
+  t.array(ConfirmedNeedRow),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    if (me?.role !== 'coordinator') return [];
+    return [...ctx.db.confirmedNeed.incidentId.filter(me.incidentId)].map(c => ({
+      householdId: c.householdId, needId: c.needId, dispatchNeed: c.dispatchNeed,
+      label: 'self-confirmed via preparedness profile', confirmedAt: c.confirmedAt,
+    }));
   }
 );
 
