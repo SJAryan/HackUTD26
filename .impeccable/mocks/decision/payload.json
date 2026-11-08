@@ -1,0 +1,61 @@
+{
+  "title": "Choose the visual world for Before Zero",
+  "question": "The roll assigned the Departure Board. Keep it, take an alternate, or re-roll. Red and white is pinned; the first look is the whole incident.",
+  "options": [
+    {
+      "id": "assigned", "kind": "assigned", "label": "Departure Board", "kicker": "THE ROLL",
+      "lineage": "Station departure boards: rows ranked by time, a split-flap flip when something changes",
+      "thesis": "Every household is a departure ranked by margin; the board flips the moment a route stops making it.",
+      "palette": ["#c41e1e", "#ffffff", "#222222", "#f6f4f4", "#e2e2e2"],
+      "materials": ["red header band", "ruled board rows", "condensed signage type", "split-flap margin digits"],
+      "viewport": "Red band with Before Zero and the incident clock; a lane strip with Act now, Watch, Unknown, Silent counts and free resources; the ranked board below with H17 selected and its source message, both routes and the Reserve button on the right.",
+      "risk": "If the flip is overused it reads as novelty; it fires only when a lane or margin changes.",
+      "raised": [
+        {"from": "challenger-saville", "raise": "Each fact appears once: the lane is not repeated by colour, chip and text."},
+        {"from": "challenger-emigre", "raise": "One type family on a strict size ladder from board digits to footnotes."},
+        {"from": "challenger-labanotation", "raise": "Bar length is exact minutes on one shared scale across every route."},
+        {"from": "challenger-zoo", "raise": "Lane is shown by position and shape, never by colour alone."},
+        {"from": "challenger-ikeda", "raise": "Selecting a row pulls it forward and drops the rest of the board to faint."}
+      ],
+      "html": ".impeccable/mocks/decision/assigned.html"
+    },
+    {
+      "id": "model-pick", "kind": "pick", "label": "Triage Tag", "kicker": "IMPECCABLE’S PICK",
+      "lineage": "Field triage tags: white card, wire hole, tear-off priority strip",
+      "thesis": "Every household wears a tag; the tear-off strip is its lane.",
+      "palette": ["#c41e1e", "#ffffff", "#202020", "#eceae6"],
+      "materials": ["card stock tags", "perforated strips", "wire-tie hole"],
+      "viewport": "Four lane columns of household tags, H17 focused in Act now with its reply, margin and Reserve button.",
+      "risk": "The obvious emergency metaphor; mass-casualty triage can read grim next to a real death.",
+      "html": ".impeccable/mocks/decision/model-pick.html"
+    },
+    {
+      "id": "challenger-catalog", "kind": "challenger", "catalogId": "pop-culture-shelf-doujin-event-catalog",
+      "label": "Event Catalog Grid", "verdict": "competitive",
+      "lineage": "Convention circle catalogs: numbered stamp-size cells packed edge to edge",
+      "thesis": "All 200 households at once, one numbered cell each.",
+      "palette": ["#c41e1e", "#ffffff", "#1f1f1f", "#dcdcdc"],
+      "materials": ["packed numbered cells", "fill patterns for lanes"],
+      "viewport": "A 20-column grid of household cells with lane by fill pattern, H17 circled, its margin on the right.",
+      "case": "Shows the whole incident better than any other card; loses on audience identification, coordinators do not know this form.",
+      "risk": "Cells hide margins until selected; ranking is weaker than a list.",
+      "html": ".impeccable/mocks/decision/challenger-catalog.html"
+    },
+    {"id": "challenger-saville", "kind": "challenger", "catalogId": "brand-identity-canon-saville-catalog-sleeve", "label": "Catalog Sleeve", "verdict": "declined", "lineage": "Factory records sleeves", "palette": ["#111111", "#ffffff"], "materials": ["matte black", "coded colour strip"], "case": "Codes replace labels; a 2am coordinator cannot decode.", "kept": "Each fact appears once."},
+    {"id": "challenger-emigre", "kind": "challenger", "catalogId": "emigre-bitmap-specimen", "label": "Bitmap Specimen", "verdict": "declined", "lineage": "Emigre type specimens", "palette": ["#ffffff", "#111111"], "materials": ["bitmap type"], "case": "Pixel display type fights projector legibility.", "kept": "One family on a strict size ladder."},
+    {"id": "challenger-labanotation", "kind": "challenger", "catalogId": "notation-diagram-systems-labanotation", "label": "Dance Score", "verdict": "declined", "lineage": "Labanotation", "palette": ["#ffffff", "#111111"], "materials": ["score paper"], "case": "Upward time reads backwards for a dispatcher.", "kept": "Length equals exact duration on one scale."},
+    {"id": "challenger-zoo", "kind": "challenger", "catalogId": "aww2-zoo-gardens-guide-map", "label": "Guide Map", "verdict": "declined", "lineage": "Zoo guide maps", "palette": ["#8ed462", "#f5f1e4"], "materials": ["flat colour lobes"], "case": "Playful map conflicts with pinned red and white and with no real maps.", "kept": "State shown by position, not colour."},
+    {"id": "challenger-ikeda", "kind": "challenger", "catalogId": "ikeda-datamatics", "label": "Data Field", "verdict": "declined", "lineage": "Ikeda datamatics", "palette": ["#000000", "#ffffff"], "materials": ["barcode fields"], "case": "Strobing black and white is hostile at 2am and drops the red.", "kept": "Selection pulls one row forward, the field goes faint."}
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "canon": true,
+  "canonCard": {
+    "kind": "canon", "label": "The category standard",
+    "thesis": "An operations dashboard: side rail, KPI tiles, table, detail drawer, red accent.",
+    "palette": ["#ffffff", "#1d2129", "#c41e1e", "#f7f7f8"],
+    "materials": ["side rail", "KPI tiles", "sortable table", "detail drawer"],
+    "viewport": "Rail on the left, five KPI tiles, the household table and an H17 drawer.",
+    "risk": "Looks like every ops tool; nothing a judge remembers.",
+    "html": ".impeccable/mocks/decision/canon.html"
+  }
+}
