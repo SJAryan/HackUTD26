@@ -255,7 +255,8 @@ function LiveDrawer({ h, c, round, followup, incidentId, now, onClose }: DrawerP
         ) : (
           <p className="sub">No check-in yet, so the runtime is unknown.</p>
         )}
-        {!job && (
+        {/* After dispatch, a reply is still recorded while a round is open: it closes the callback. */}
+        {(!job || round) && (
           <div className="record">
             <span className="sub">Record a reply taken by phone</span>
             <div className="record-row">
@@ -270,7 +271,9 @@ function LiveDrawer({ h, c, round, followup, incidentId, now, onClose }: DrawerP
         )}
       </section>
 
-      {!job && <Outreach h={h} round={round} followup={followup} incidentId={incidentId} now={now} />}
+      {/* An active round or callback stays visible after dispatch: help on the way does not
+          answer the check-in, so its owner, evidence and audit trail must not disappear. */}
+      {(!job || round) && <Outreach h={h} round={round} followup={followup} incidentId={incidentId} now={now} />}
 
       {!job && c.options.length > 0 && (
         <section className="block">
