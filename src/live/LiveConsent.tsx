@@ -25,6 +25,20 @@ const CONTACTS = [
 ];
 const label = (list: { id: string; label: string }[], id: string) => list.find((x) => x.id === id)?.label ?? id;
 
+// TL-15: a confirmation sent after the profile but not yet stored. Kept in this tab so a reload
+// between the two calls can still finish it with the same confirmationId (a retry is a no-op).
+type Pending = { householdId: string; confirmationId: string; needId: string };
+const PENDING_KEY = 'tl15-pending-confirmation';
+const readPending = (householdId?: string): Pending | undefined => {
+  try {
+    const p = JSON.parse(sessionStorage.getItem(PENDING_KEY) ?? 'null') as Pending | null;
+    return p && p.householdId === householdId ? p : undefined;
+  } catch { return undefined; }
+};
+const writePending = (p?: Pending) => {
+  try { p ? sessionStorage.setItem(PENDING_KEY, JSON.stringify(p)) : sessionStorage.removeItem(PENDING_KEY); } catch { /* storage blocked: same-session retry still works */ }
+};
+
 // Synthetic demo resident. Real people never appear in this app's data.
 const DEFAULTS = {
   medicalNeed: 'home_oxygen',
@@ -47,13 +61,20 @@ export function LiveRegister({ go }: { go: (route: string) => void }) {
   // One confirmation per household (A's confirmSuggestedNeed), reused on retry. Only a need the
   // resident confirmed as suggested is sent; a correction lives in the equipment text.
   const confirmationId = useRef(newId());
-  const toConfirm = kept.find((k) => !k.corrected);
+  const { role } = useMyRole();
+  const toSave = kept.filter((k) => !k.corrected);
+  const toConfirm = toSave[0];
+  // In this tab's memory, or left over from before a reload.
+  const pending: Pending | undefined = toConfirm && role?.subjectId
+    ? { householdId: role.subjectId, confirmationId: confirmationId.current, needId: toConfirm.id }
+    : readPending(role?.subjectId);
   const saveNeed = () => {
-    if (!toConfirm) return Promise.resolve();
-    return confirmNeed({ confirmationId: confirmationId.current, needId: toConfirm.id });
+    if (!pending) return Promise.resolve();
+    writePending(pending);
+    return confirmNeed({ confirmationId: pending.confirmationId, needId: pending.needId }).then(() => writePending());
   };
   const profile = profiles[0];
-  const { role } = useMyRole();
+  if (confirmed[0] && readPending(role?.subjectId)) writePending();
 
   if (profile) {
     return (
@@ -69,9 +90,9 @@ export function LiveRegister({ go }: { go: (route: string) => void }) {
           </p>
           {/* Read back from the server, so this only appears once the confirmation is stored. */}
           {confirmed[0] && <p className="sub">Confirmed from your policy: {confirmed[0].needId === 'step_free_access' ? 'step-free access' : 'powered equipment'}. The response team sees it as self-confirmed.</p>}
-          {!confirmed[0] && toConfirm && status.kind === 'error' && (
+          {!confirmed[0] && pending && status.kind !== 'sending' && (
             <p className="result result-conflict" role="alert">
-              <Icon name="alert" size={15} /> Your registration is saved, but the policy confirmation was not: {status.text}{' '}
+              <Icon name="alert" size={15} /> Your registration is saved, but the policy confirmation was not{status.kind === 'error' ? `: ${status.text}` : ' yet.'}{' '}
               <button className="link-btn" onClick={() => saveNeed().then(() => setStatus({ kind: 'idle' })).catch((err: unknown) => setStatus({ kind: 'error', text: errorText(err) }))}>Try again</button>
             </p>
           )}
@@ -126,6 +147,8 @@ export function LiveRegister({ go }: { go: (route: string) => void }) {
             ...(next.some((k) => k.corrected) && x.backupDevice === DEFAULTS.backupDevice ? { backupDevice: '' } : {}),
           }));
         }} />}
+        {/* A's confirmed_need holds one row per household; say so rather than drop one silently. */}
+        {toSave.length > 1 && <p className="policy-fine">This prototype saves one confirmed need per household: {toConfirm.id === 'step_free_access' ? 'step-free access' : 'powered equipment'}.</p>}
         <fieldset className="field">
           <legend>What depends on power</legend>
           <div className="choices">
