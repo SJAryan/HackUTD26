@@ -15,7 +15,7 @@ All data in the seed is synthetic.
 
 | Path | Owner | Contents |
 |---|---|---|
-| `spacetimedb/src/` | A | Schema, reducers, views and seed (`index.ts`); `rules.ts` fixture adapter |
+| `spacetimedb/src/` | A | Schema, reducers, views and seed (`index.ts`); `rules.ts` re-exports C's rules |
 | `spacetimedb/src/domain/` | C | Pure dispatch rules, imported by A (TL-03/TL-05) |
 | `src/module_bindings/` | A | Generated; never edit by hand. Run `npm run stdb:generate` |
 | `src/` (everything else) | D | React client. `src/App.tsx` is a connection check D replaces |
@@ -403,9 +403,9 @@ conn.reducers.releaseJob({ jobId, expectedVersion: job.version });
 Not built yet: notifying the resident by Photon on arrival (TL-08), opening rounds from the
 bridge, the TL-11 dispatch benchmark (C), and a public signup without a resident invite.
 
-**Dispatch rules:** `spacetimedb/src/rules.ts` copies `readyAt` from C's unmerged TL-03 branch as
-a fixture. Once TL-03 is on main, its body becomes a re-export of
-`./domain/dispatch`.
+**Dispatch rules:** `spacetimedb/src/rules.ts` re-exports `readyAt` and `DispatchOption` from C's
+`./domain/dispatch` (TL-03), so `reserve` computes ETAs with C's rules. Change the formula in
+`domain/dispatch.ts`, not in `rules.ts`.
 
 ## Maincloud
 
