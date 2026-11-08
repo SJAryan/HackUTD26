@@ -23,6 +23,7 @@ const paths = {
   bolt: <path d="M11 2.6 4.6 11h4.6L8.6 17.4 15.4 9h-4.6L11 2.6Z" />,
   send: <path d="M3 10 17 3.4 13.2 17l-3-5.4L3 10Zm7.2 1.6L17 3.4" />,
   chevron: <path d="m7.6 5 5 5-5 5" />,
+  person: <><circle cx="10" cy="6.8" r="3" /><path d="M4.2 16.6a5.8 5.8 0 0 1 11.6 0" /></>,
 };
 
 export type IconName = keyof typeof paths;

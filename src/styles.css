@@ -400,3 +400,18 @@ form .fixture-note { padding: 0; }
 
 .choice.off { opacity: 0.5; cursor: not-allowed; }
 .field > small { margin-top: 2px; }
+
+/* TL-09: preparedness and agent contact */
+.gives { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; color: var(--ink-2); font-size: 14.5px; }
+.gives li { display: flex; gap: 10px; align-items: flex-start; }
+.gives svg { color: var(--red); flex: none; margin-top: 3px; }
+.programs { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 20px; font-size: 13.5px; color: var(--ink-2); }
+.programs .sub { flex-basis: 100%; }
+.offer { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--rule); border-radius: 14px; background: var(--white); font-size: 14.5px; color: var(--ink-2); }
+.offer.done { background: var(--green-wash); border-color: #bfe3cc; }
+.offer-title { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ink); }
+.offer.done .offer-title { color: var(--green); }
+.offer-fine { font-size: 12.5px; color: var(--mute); }
+.offer-actions { display: flex; justify-content: flex-end; gap: 8px; }
+@media (min-width: 1180px) { .offer { font-size: 15.5px; } .offer-fine { font-size: 13.5px; } }
+.offer .check { font-size: inherit; color: var(--ink); }

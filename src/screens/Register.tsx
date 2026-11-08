@@ -34,7 +34,7 @@ export function Register({ go }: { go: (route: string) => void }) {
       <div className="site">
         <section className="site-card done">
           <Icon name="checkCircle" size={28} />
-          <h1>You are on the registry</h1>
+          <h1>Your preparedness profile is ready</h1>
           <p>
             If the power goes out at {s.registration.address}, Before Zero texts you first, then calls. Your answer tells the response team how much time you have.
           </p>
@@ -53,8 +53,13 @@ export function Register({ go }: { go: (route: string) => void }) {
       <section className="site-intro">
         <h1>Register a household that depends on power</h1>
         <p>
-          Oxygen, home dialysis or no way to stay warm. Tell us once, before the next storm. During an outage we check in with you and send help in order of who runs out first.
+          Oxygen, home dialysis or no way to stay warm. Tell us once, before the next storm. Your preparedness profile is free, and you don't need to be anyone's customer.
         </p>
+        <ul className="gives">
+          <li><Icon name="message" size={16} />A check-in by iMessage the moment your power goes out, then a phone call if you don't answer.</li>
+          <li><Icon name="clock" size={16} />Help sent in order of who runs out first, based on what you tell us.</li>
+          <li><Icon name="truck" size={16} />A driver's name and arrival time, and a way to message them.</li>
+        </ul>
       </section>
 
       <form className="site-card form" onSubmit={submit}>

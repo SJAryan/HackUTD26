@@ -49,6 +49,7 @@ function Steps() {
     { label: 'Resident reports backup left', done: !!s.answer },
     { label: 'Driver sent', done: !!s.job },
     { label: 'Battery received', done: s.job?.status === 'received' },
+    { label: 'Agent contact, optional', done: !!s.agentRequest || s.agentSkipped },
   ];
   const next = steps.findIndex((x) => !x.done);
   return (

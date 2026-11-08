@@ -12,6 +12,7 @@ const EVENT_ICON: Record<Event['kind'], IconName> = {
   decision: 'bolt',
   dispatch: 'truck',
   delivery: 'checkCircle',
+  consent: 'person',
 };
 const STEPS: { status: JobStatus; label: string }[] = [
   { status: 'reserved', label: 'Reserved' },
@@ -114,6 +115,9 @@ export function HouseholdDrawer({ row, onClose }: { row: Household; onClose: () 
         <div><dt>Need</dt><dd>{NEED_LABEL[reg.need]}</dd></div>
         <div><dt>Equipment</dt><dd>{reg.equipment}</dd></div>
         <div><dt>Contact</dt><dd>{reg.contact}</dd></div>
+        {s.job?.status === 'received' && (
+          <div><dt>Agent contact</dt><dd>{s.agentRequest ? `Requested, ${s.agentRequest.leadId}` : s.agentSkipped ? 'Skipped' : 'Offered, no answer yet'}</dd></div>
+        )}
       </dl>
 
       {!s.outage && <p className="callout">Registered. Nothing to do until an outage reaches this street.</p>}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEMO_ID, LANE_LABEL, NEED_LABEL, RESOURCES, fmt, signed, type Household, type Lane } from '../demo/fixture';
-import { householdRows, startOutage, useDemo } from '../demo/store';
+import { agentOptIns, householdRows, startOutage, useDemo } from '../demo/store';
 import { Icon, type IconName } from '../ui/icons';
 import { HouseholdDrawer } from './HouseholdDrawer';
 
@@ -114,6 +114,12 @@ export function Board() {
             </dl>
           </div>
         </section>
+
+        <p className="programs" aria-label="Programs, counted separately">
+          <span><b>{counts.all}</b> registered for preparedness</span>
+          <span><b>{agentOptIns(s)}</b> asked for agent contact after help</span>
+          <span className="sub">Opt-ins are counted apart from registrations. Help never depends on them.</span>
+        </p>
 
         <section className="panel">
           <div className="toolbar">
