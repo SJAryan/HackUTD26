@@ -53,10 +53,19 @@ test('confirming step-free access keeps it; skip stores nothing', () => {
 });
 
 test('a confirmed need flows into evaluateOptions and changes nothing else', () => {
+  // Start from H17 with no recorded need: nothing is compatible yet.
+  const unregistered = { ...h17, need: '' };
+  const before = evaluateOptions(unregistered, tornado.options, tornado.clockAt);
+  assert.equal(before.lane, 'act_now');
+  assert.equal(before.best, undefined);
+
   const need = confirmedNeed({ choice: 'confirm', suggestion: byId.H17[0] });
   assert.deepEqual(need, { id: 'powered_equipment', dispatchNeed: 'battery' });
-  const confirmed = evaluateOptions({ ...h17, need: need!.dispatchNeed! }, tornado.options, tornado.clockAt);
-  assert.deepEqual(confirmed, evaluateOptions(h17, tornado.options, tornado.clockAt));
+  const after = evaluateOptions({ ...unregistered, need: need!.dispatchNeed! }, tornado.options, tornado.clockAt);
+  assert.equal(after.lane, 'watch');
+  assert.deepEqual([after.best?.routeId, after.best?.marginLoMin], ['R4', 17]);
+  // Nothing else changes: same result as H17's battery need from TL-03.
+  assert.deepEqual(after, evaluateOptions(h17, tornado.options, tornado.clockAt));
 });
 
 test('a skipped household gets identical assistance', () => {

@@ -443,3 +443,14 @@ form .fixture-note { padding: 0; }
 .record-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .btn-sm { height: 30px; padding: 0 10px; font-size: 12.5px; }
 .live-offer { padding: 12px 14px 0; }
+
+/* TL-17: check-in rounds and the callback queue */
+.drawer-reason { padding: 10px 20px 0; font-size: 13px; color: var(--ink-2); }
+.callback { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--ground); font-size: 13.5px; }
+.callback > .btn { align-self: flex-start; }
+.audit { list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--ink-2); }
+.audit span { color: var(--mute); font-variant-numeric: tabular-nums; margin-right: 4px; }
+.queue { margin-top: 16px; }
+.queue-head { display: flex; align-items: baseline; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--rule); }
+.queue-head h2 { font-size: 14px; font-weight: 600; }
+.queue .result { margin-top: 6px; white-space: normal; }
