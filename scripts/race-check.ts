@@ -3,7 +3,7 @@
 // for the winner. Run against a freshly reset database:
 //   npm run stdb:reset:local && npm run check:tl05
 import { tables } from '../src/module_bindings';
-import { connect, connectAs, fail, finish, rejects, run, sleep, waitFor } from './lib';
+import { connect, connectAs, createInvite, fail, finish, ownerSqlCount, rejects, run, sleep, waitFor } from './lib';
 
 const MIN = 60_000;
 const INCIDENT = 'tornado-1';
@@ -58,6 +58,36 @@ run(async () => {
   const leaked = outsider.db.coordinatorHouseholds.count() + outsider.db.driverJobs.count() + outsider.db.bridgeOutbox.count();
   if (leaked !== 0n) fail(`outsider can read ${leaked} rows`);
   console.log(`session without a role: ${denied}; sees 0 rows`);
+
+  // 4b. Cross-incident requests are rejected and write nothing.
+  const fz = await connectAs('freeze coordinator', 'coordinator', 'freeze-1', '', board);
+  const fzAsset = (id: string) => [...fz.db.coordinatorAssets.iter()].find(a => a.id === id);
+  if (!fzAsset('BAT-07') || [...c1.db.coordinatorAssets.iter()].some(a => a.id === 'BAT-07')) {
+    fail('coordinator views are not scoped to their incident');
+  }
+  const crossAsset = await rejects('cross-incident asset', () => c1.reducers.reserve({
+    jobRequestId: 'tl05-cross-asset', caseId: 'H17', routeId: 'R4', assetId: 'BAT-07', driverId: 'ana', expectedVersion: 1,
+  }), /^rejected: asset BAT-07 belongs to freeze-1, not tornado-1$/);
+  const crossRoute = await rejects('cross-incident route', () => c1.reducers.reserve({
+    jobRequestId: 'tl05-cross-route', caseId: 'H17', routeId: 'FZ-R2', assetId: 'BAT-07', driverId: 'leo', expectedVersion: 1,
+  }), /^rejected: route FZ-R2 belongs to freeze-1, not tornado-1$/);
+  const crossInviteDriver = await rejects('cross-incident driver invite', async () =>
+    createInvite('driver', 'tornado-1', 'leo'), /^rejected: driver leo belongs to freeze-1, not tornado-1$/);
+  const crossInviteResident = await rejects('cross-incident resident invite', async () =>
+    createInvite('resident', 'tornado-1', 'F09'), /^rejected: household F09 belongs to freeze-1, not tornado-1$/);
+  await sleep(300);
+  const sideEffects = {
+    jobs: ownerSqlCount('SELECT id FROM job'),
+    outbox: ownerSqlCount('SELECT key FROM outbox'),
+    invites: ownerSqlCount("SELECT code FROM invite WHERE subject_id = 'leo' OR subject_id = 'F09'"),
+    reserved: [c1, fz].flatMap(c => [...c.db.coordinatorAssets.iter(), ...c.db.coordinatorDrivers.iter()])
+      .filter(row => row.activeJobId !== undefined).length,
+  };
+  if (Object.values(sideEffects).some(n => n !== 0)) fail(`cross-incident side effects: ${JSON.stringify(sideEffects)}`);
+  if (home(c1, 'H17').version !== 1 || fzAsset('BAT-07')!.activeJobId !== undefined) fail('cross-incident attempt changed state');
+  console.log('cross-incident requests:');
+  for (const m of [crossAsset, crossRoute, crossInviteDriver, crossInviteResident]) console.log(`  ${m}`);
+  console.log(`  side effects: ${JSON.stringify(sideEffects)}; H17 still v1, BAT-07 free`);
 
   // 5. The race: both coordinators want BAT-01, for different households and drivers.
   const attempts = [

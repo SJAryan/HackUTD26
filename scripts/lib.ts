@@ -71,13 +71,29 @@ export function connect(label: string, queries: Query): Promise<DbConnection> {
 
 // Owner-only: create a single-use invite through the CLI's (owner) identity.
 // Codes are random per run and never written to disk.
+// Throws the server's error text (e.g. "rejected: ...") when the reducer refuses.
 export function createInvite(role: string, incidentId: string, subjectId = ''): string {
   const code = `${role}-${randomUUID()}`;
-  execFileSync('spacetime', [
-    'call', '--server', SERVER, DB, 'create_invite',
-    JSON.stringify(code), JSON.stringify(role), JSON.stringify(incidentId), JSON.stringify(subjectId),
-  ], { stdio: 'pipe' });
+  owner(['call', '--server', SERVER, DB, 'create_invite',
+    JSON.stringify(code), JSON.stringify(role), JSON.stringify(incidentId), JSON.stringify(subjectId)]);
   return code;
+}
+
+// Owner-only read of private tables, for checking that a rejected call wrote nothing.
+// Returns the number of rows the query matched.
+export function ownerSqlCount(query: string): number {
+  const out = owner(['sql', '--server', SERVER, DB, query]);
+  const rows = out.split('\n').filter(l => l.trim() && !l.startsWith('WARNING'));
+  return Math.max(0, rows.length - 2); // header and separator lines
+}
+
+function owner(args: string[]): string {
+  try {
+    return execFileSync('spacetime', args, { stdio: 'pipe', encoding: 'utf8' });
+  } catch (err) {
+    const stderr = String((err as { stderr?: string }).stderr ?? '');
+    throw new Error(stderr.match(/Response text: (.*)/)?.[1] ?? stderr.trim());
+  }
 }
 
 // Connect, then claim a role invite. Resolves once the session's role is visible.

@@ -183,6 +183,8 @@ function requireRole(ctx: Ctx, roles: string[], incidentId: string) {
 // Tornado incident clock: 2026-11-08 02:00 America/Chicago (CST) = 08:00 UTC.
 // Values for H17, R4 and R4-ALT match C's TL-03 tornado fixture.
 const TORNADO_CLOCK = Date.UTC(2026, 10, 8, 8, 0, 0);
+// Freeze incident clock: 2026-01-20 06:00 America/Chicago (CST) = 12:00 UTC.
+const FREEZE_CLOCK = Date.UTC(2026, 0, 20, 12, 0, 0);
 
 export const init = spacetimedb.init(ctx => {
   ctx.db.config.insert({ id: 0, owner: ctx.sender });
@@ -209,6 +211,30 @@ export const init = spacetimedb.init(ctx => {
   ctx.db.route.insert({ ...leg, id: 'R4', householdId: 'H17', driverId: 'ana', driverToAssetMin: 5, assetToHomeMin: 4 });
   ctx.db.route.insert({ ...leg, id: 'R4-ALT', householdId: 'H17', driverId: 'ana', driverToAssetMin: 5, assetToHomeMin: 15 });
   ctx.db.route.insert({ ...leg, id: 'R7', householdId: 'H22', driverId: 'ben', driverToAssetMin: 6, assetToHomeMin: 9 });
+
+  // Freeze incident, IDs and travel values from C's TL-03 freeze fixture (PR #20).
+  const freezeId = 'freeze-1';
+  const freezeClock = ts(FREEZE_CLOCK);
+  ctx.db.incident.insert({ id: freezeId, kind: 'freeze', name: 'Winter freeze outage (synthetic)', clockAt: freezeClock });
+  for (const [id, need] of [['F03', 'generator'], ['F09', 'battery'], ['F14', 'battery']]) {
+    ctx.db.household.insert({
+      id, incidentId: freezeId, label: `Household ${id} (synthetic)`, need, version: 0,
+      runtimeLowerMin: undefined, runtimeUpperMin: undefined,
+      lastObservedAt: undefined, lastEventId: undefined, activeJobId: undefined,
+    });
+  }
+  ctx.db.asset.insert({ id: 'GEN-02', incidentId: freezeId, kind: 'generator', freeAt: freezeClock, activeJobId: undefined });
+  ctx.db.asset.insert({ id: 'BAT-07', incidentId: freezeId, kind: 'battery', freeAt: freezeClock, activeJobId: undefined });
+  ctx.db.driver.insert({ id: 'leo', incidentId: freezeId, name: 'Leo', freeAt: freezeClock, activeJobId: undefined });
+  // FZ-R1 ready 06:18 (F03, generator); FZ-R2 ready 06:23 (F09, battery).
+  ctx.db.route.insert({
+    id: 'FZ-R1', incidentId: freezeId, householdId: 'F03', driverId: 'leo', assetId: 'GEN-02',
+    driverToAssetMin: 6, pickupMin: 3, assetToHomeMin: 7, setupMin: 2, confirmedDelayMin: 0,
+  });
+  ctx.db.route.insert({
+    id: 'FZ-R2', incidentId: freezeId, householdId: 'F09', driverId: 'leo', assetId: 'BAT-07',
+    driverToAssetMin: 10, pickupMin: 2, assetToHomeMin: 8, setupMin: 3, confirmedDelayMin: 0,
+  });
 });
 
 // ---- Roles ----
@@ -222,11 +248,18 @@ export const createInvite = spacetimedb.reducer(
       throw new SenderError(`unknown role ${args.role}`);
     }
     if (!ctx.db.incident.id.find(args.incidentId)) throw new SenderError(`unknown incident ${args.incidentId}`);
-    if (args.role === 'driver' && !ctx.db.driver.id.find(args.subjectId)) {
-      throw new SenderError(`unknown driver ${args.subjectId}`);
-    }
-    if (args.role === 'resident' && !ctx.db.household.id.find(args.subjectId)) {
-      throw new SenderError(`unknown household ${args.subjectId}`);
+    // A driver or resident subject must exist in the invite's incident.
+    const subject =
+      args.role === 'driver' ? ctx.db.driver.id.find(args.subjectId)
+      : args.role === 'resident' ? ctx.db.household.id.find(args.subjectId)
+      : undefined;
+    if ((args.role === 'driver' || args.role === 'resident') && subject?.incidentId !== args.incidentId) {
+      const kind = args.role === 'driver' ? 'driver' : 'household';
+      throw new SenderError(
+        subject
+          ? `rejected: ${kind} ${args.subjectId} belongs to ${subject.incidentId}, not ${args.incidentId}`
+          : `unknown ${kind} ${args.subjectId}`
+      );
     }
     if (ctx.db.invite.code.find(args.code)) throw new SenderError('invite code already exists');
     ctx.db.invite.insert(args);
@@ -338,12 +371,19 @@ export const reserve = spacetimedb.reducer(
     requireRole(ctx, ['coordinator'], home.incidentId);
 
     const r = ctx.db.route.id.find(args.routeId);
-    if (!r || r.householdId !== home.id || r.assetId !== args.assetId || r.driverId !== args.driverId) {
-      throw new SenderError(`route ${args.routeId} does not join ${args.caseId}, ${args.assetId} and ${args.driverId}`);
-    }
     const a = ctx.db.asset.id.find(args.assetId);
     const d = ctx.db.driver.id.find(args.driverId);
+    if (!r) throw new SenderError(`unknown route ${args.routeId}`);
     if (!a || !d) throw new SenderError('unknown asset or driver');
+    // Route, asset and driver must all belong to the household's incident.
+    for (const [kind, row] of [['route', r], ['asset', a], ['driver', d]] as const) {
+      if (row.incidentId !== home.incidentId) {
+        throw new SenderError(`rejected: ${kind} ${row.id} belongs to ${row.incidentId}, not ${home.incidentId}`);
+      }
+    }
+    if (r.householdId !== home.id || r.assetId !== a.id || r.driverId !== d.id) {
+      throw new SenderError(`route ${args.routeId} does not join ${args.caseId}, ${args.assetId} and ${args.driverId}`);
+    }
     if (a.kind !== home.need) throw new SenderError(`incompatible: ${a.id} is ${a.kind}, ${home.id} needs ${home.need}`);
 
     // Every check runs before any write, so a losing attempt has no side effects.
