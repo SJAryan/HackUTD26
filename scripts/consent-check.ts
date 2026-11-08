@@ -8,7 +8,7 @@ import { connect, connectAs, fail, finish, ownerSqlCount, rejects, run, sleep, w
 const INCIDENT = 'tornado-1';
 
 run(async () => {
-  const mine = [tables.myRole, tables.myProfile, tables.myAgentRequest, tables.residentJobs];
+  const mine = [tables.myRole, tables.myProfile, tables.myAgentRequest, tables.myAgentDecline, tables.residentJobs];
   const coord = await connectAs('coordinator', 'coordinator', INCIDENT, '', [
     tables.myIncident, tables.coordinatorHouseholds, tables.coordinatorJobs,
     tables.coordinatorProfiles, tables.coordinatorRegistryStats,
@@ -83,15 +83,40 @@ run(async () => {
   console.log(`H17 opts in: receipt L-${lead.id}, contact ${lead.preferredContact}, job #${lead.jobId}; retry added nothing`);
   console.log(`second consent ID: ${again}`);
 
-  // 5. Skip creates none: H22 never calls requestAgentContact.
-  if (h22.db.myAgentRequest.count() !== 0n) fail('H22 has a lead without consenting');
-  console.log(`H22 skips: no lead; stats: ${stats().registrations} registrations, ${stats().agentOptIns} opt-in`);
+  // 5. Skip records the decline and creates no lead; a retry is a no-op; it is final.
+  await h22.reducers.skipAgentContact({});
+  await h22.reducers.skipAgentContact({}); // retry
+  await waitFor('H22 sees its decline', () => h22.db.myAgentDecline.count() === 1n);
+  await sleep(300);
+  if (h22.db.myAgentRequest.count() !== 0n) fail('H22 has a lead after skipping');
+  if (ownerSqlCount('SELECT household_id FROM agent_decline') !== 1) fail('expected exactly one decline row');
+  if (ownerSqlCount('SELECT id FROM agent_contact') !== 1) fail('skip created a lead');
+  if (stats().agentOptIns !== 1) fail(`opt-in count changed after a skip: ${stats().agentOptIns}`);
+  console.log(`H22 skips (and retries): decline recorded, no lead; stats: ${stats().registrations} registrations, ${stats().agentOptIns} opt-in`);
+
+  const afterSkip = await rejects('request after skip', () =>
+    h22.reducers.requestAgentContact({ consentId: 'tl09-h22-consent' }),
+    /^conflict: the resident skipped\. Nothing was saved\.$/);
+  if (ownerSqlCount('SELECT id FROM agent_contact') !== 1 || stats().agentOptIns !== 1) fail('request after skip saved a lead');
+  console.log(`H22 requests after skipping: ${afterSkip}`);
+
+  const skipAfterOptIn = await rejects('skip after opt-in', () =>
+    h17.reducers.skipAgentContact({}), /^conflict: H17 already has request L-\d+$/);
+  if (ownerSqlCount('SELECT household_id FROM agent_decline') !== 1 || h17.db.myAgentRequest.count() !== 1n) {
+    fail('skip after opt-in changed state');
+  }
+  console.log(`H17 skips after opting in: ${skipAfterOptIn}`);
+
+  const outsiderSkip = await rejects('outsider skip', () => outsider.reducers.skipAgentContact({}), /forbidden/);
+  console.log(`session without a role skips: ${outsiderSkip}`);
 
   // 6. Privacy and equal access.
   const leaks =
     h22.db.myProfile.count() !== 1n ||
     [...h22.db.myProfile.iter()][0].householdId !== 'H22' ||
-    outsider.db.myProfile.count() + outsider.db.myAgentRequest.count() + outsider.db.coordinatorProfiles.count() !== 0n ||
+    h17.db.myAgentDecline.count() !== 0n ||
+    outsider.db.myProfile.count() + outsider.db.myAgentRequest.count() + outsider.db.myAgentDecline.count() +
+      outsider.db.coordinatorProfiles.count() !== 0n ||
     outsider.db.coordinatorRegistryStats.count() !== 0n ||
     ana.db.coordinatorProfiles.count() !== 0n;
   if (leaks) fail('profiles or leads are visible outside their household or role');

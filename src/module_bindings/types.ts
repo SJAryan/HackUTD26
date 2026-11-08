@@ -22,6 +22,14 @@ export const AgentContact = __t.object("AgentContact", {
 });
 export type AgentContact = __Infer<typeof AgentContact>;
 
+export const AgentDecline = __t.object("AgentDecline", {
+  householdId: __t.string(),
+  incidentId: __t.string(),
+  identity: __t.identity(),
+  declinedAt: __t.timestamp(),
+});
+export type AgentDecline = __Infer<typeof AgentDecline>;
+
 export const Asset = __t.object("Asset", {
   id: __t.string(),
   incidentId: __t.string(),
@@ -163,6 +171,9 @@ export const Member = __t.object("Member", {
   subjectId: __t.string(),
 });
 export type Member = __Infer<typeof Member>;
+
+export const MyAgentDecline = __t.object("MyAgentDecline", {});
+export type MyAgentDecline = __Infer<typeof MyAgentDecline>;
 
 export const MyAgentRequest = __t.object("MyAgentRequest", {});
 export type MyAgentRequest = __Infer<typeof MyAgentRequest>;

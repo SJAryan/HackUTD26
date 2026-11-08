@@ -75,9 +75,11 @@ npm run stdb:reset:local && npm run check:tl09
   and gets the full history back. Ends with `PASS: TL-06 job thread`.
 - **TL-09:** H17 and H22 create preparedness profiles (a retry adds nothing). H17's agent
   request is refused before delivery, then accepted once after Ana delivers; a retry adds
-  nothing and a second consent ID is a conflict. H22 skips and has no lead. The coordinator sees
-  2 registrations and 1 opt-in, never the lead; drivers and sessions without a role see no
-  profiles. Ends with `PASS: TL-09 enrollment and agent contact`.
+  nothing and a second consent ID is a conflict. H22 skips (a retry adds nothing): the decline
+  is recorded, no lead is created, and a request after the skip is
+  `conflict: the resident skipped. Nothing was saved.` H17 skipping after opting in is a
+  conflict. The coordinator sees 2 registrations and 1 opt-in, never the lead; drivers and
+  sessions without a role see no profiles. Ends with `PASS: TL-09 enrollment and agent contact`.
 
 To point a check at another server, set `SPACETIMEDB_HOST`, `SPACETIMEDB_DB_NAME` and
 `SPACETIMEDB_SERVER` (the CLI nickname, e.g. `maincloud`).
@@ -103,7 +105,7 @@ await conn.reducers.claimInvite({ code }); // binds this session's identity to t
 | `coordinator` | `''` | `ingestCheckin`, `confirmRouteReport`, `reserve` | `coordinator_*` and `job_messages` for its incident |
 | `driver` | driver ID | `postJobMessage`, `updateJob` (`arrived`) on its jobs | `driver_jobs`, `job_messages`: its own jobs only |
 | `bridge` | `''` | `ingestCheckin` | `bridge_outbox` and `bridge_checkins` (receipts) for its incident |
-| `resident` | household ID | `postJobMessage`, `updateJob` (`delivered`) on its jobs; `enrollPreparedness`, `requestAgentContact` | `resident_jobs`, `job_messages`, `my_profile`, `my_agent_request`: its own household only |
+| `resident` | household ID | `postJobMessage`, `updateJob` (`delivered`) on its jobs; `enrollPreparedness`, `requestAgentContact`, `skipAgentContact` | `resident_jobs`, `job_messages`, `my_profile`, `my_agent_request`, `my_agent_decline`: its own household only |
 
 A driver or resident invite is rejected unless that driver or household belongs to the invite's
 incident. Invite codes are single-use but do not expire; share them privately.
@@ -146,7 +148,7 @@ All tables are private. Clients subscribe to views: `tables.myRole`, `tables.myI
 `tables.coordinatorHouseholds`, `tables.coordinatorCheckins`, `tables.coordinatorAssets`,
 `tables.coordinatorDrivers`, `tables.coordinatorRoutes`, `tables.coordinatorJobs`,
 `tables.driverJobs`, `tables.residentJobs`, `tables.jobMessages`, `tables.bridgeOutbox`,
-`tables.bridgeCheckins`, `tables.myProfile`, `tables.myAgentRequest`,
+`tables.bridgeCheckins`, `tables.myProfile`, `tables.myAgentRequest`, `tables.myAgentDecline`,
 `tables.coordinatorProfiles` and `tables.coordinatorRegistryStats`.
 A view change can arrive as a delete plus an
 insert, so read the current rows rather than relying on `onUpdate`.
@@ -278,11 +280,25 @@ conn.reducers.requestAgentContact({ consentId: crypto.randomUUID() }); // stable
   and carrying the profile's preferred contact. The resident sees the receipt in
   `my_agent_request` (show it as `L-<id>`). This is a prototype lead, not a policy or a quote.
 - **Duplicate:** the same `consentId` again is a no-op.
-- **Conflict:** no delivered job yet (`offered only after help is delivered`), or the household
-  already has a request. **Rejected:** no preparedness profile.
-- **Skip:** a client action; it calls nothing and creates nothing.
+- **Conflict:** no delivered job yet (`offered only after help is delivered`), the household
+  already has a request, or the resident skipped
+  (`conflict: the resident skipped. Nothing was saved.`). **Rejected:** no preparedness profile.
 - **Counting:** `coordinator_registry_stats` gives one row per incident with `registrations` and
   `agentOptIns`, counted separately. Coordinators never see the leads themselves.
+
+**`skipAgentContact`** (TL-09, D -> A; the household's resident):
+
+```ts
+conn.reducers.skipAgentContact({});
+```
+
+- **Success:** records the decline in the private `agent_decline` table and creates no lead.
+  The resident sees it in `my_agent_decline`, so the screen can show "Skipped" after a reload.
+- **Duplicate:** skipping again is a no-op.
+- **Final:** after a skip, `requestAgentContact` is a conflict, so a late or stray request can
+  never turn it into a lead.
+- **Conflict:** the household already opted in (`conflict: H17 already has request L-1`).
+- **Counting:** skips never change `agentOptIns`. A skip does not require a delivered job.
 - **Equal access:** `reserve`, `ingestCheckin` and the coordinator household rows never read
   profiles or leads, so opting in or skipping cannot change who gets help or how fast.
 

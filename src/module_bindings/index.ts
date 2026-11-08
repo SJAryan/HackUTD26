@@ -42,6 +42,7 @@ import IngestCheckinReducer from "./ingest_checkin_reducer";
 import PostJobMessageReducer from "./post_job_message_reducer";
 import RequestAgentContactReducer from "./request_agent_contact_reducer";
 import ReserveReducer from "./reserve_reducer";
+import SkipAgentContactReducer from "./skip_agent_contact_reducer";
 import UpdateJobReducer from "./update_job_reducer";
 
 // Import all procedure arg schemas
@@ -59,6 +60,7 @@ import CoordinatorRegistryStatsRow from "./coordinator_registry_stats_table";
 import CoordinatorRoutesRow from "./coordinator_routes_table";
 import DriverJobsRow from "./driver_jobs_table";
 import JobMessagesRow from "./job_messages_table";
+import MyAgentDeclineRow from "./my_agent_decline_table";
 import MyAgentRequestRow from "./my_agent_request_table";
 import MyIncidentRow from "./my_incident_table";
 import MyProfileRow from "./my_profile_table";
@@ -153,6 +155,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, JobMessagesRow),
+  myAgentDecline: __table({
+    name: 'my_agent_decline',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyAgentDeclineRow),
   myAgentRequest: __table({
     name: 'my_agent_request',
     indexes: [
@@ -200,6 +209,7 @@ const reducersSchema = __reducers(
   __reducerSchema("post_job_message", PostJobMessageReducer),
   __reducerSchema("request_agent_contact", RequestAgentContactReducer),
   __reducerSchema("reserve", ReserveReducer),
+  __reducerSchema("skip_agent_contact", SkipAgentContactReducer),
   __reducerSchema("update_job", UpdateJobReducer),
 );
 

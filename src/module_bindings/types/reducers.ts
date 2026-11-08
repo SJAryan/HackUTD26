@@ -14,6 +14,7 @@ import IngestCheckinReducer from "../ingest_checkin_reducer";
 import PostJobMessageReducer from "../post_job_message_reducer";
 import RequestAgentContactReducer from "../request_agent_contact_reducer";
 import ReserveReducer from "../reserve_reducer";
+import SkipAgentContactReducer from "../skip_agent_contact_reducer";
 import UpdateJobReducer from "../update_job_reducer";
 
 export type ClaimInviteParams = __Infer<typeof ClaimInviteReducer>;
@@ -24,5 +25,6 @@ export type IngestCheckinParams = __Infer<typeof IngestCheckinReducer>;
 export type PostJobMessageParams = __Infer<typeof PostJobMessageReducer>;
 export type RequestAgentContactParams = __Infer<typeof RequestAgentContactReducer>;
 export type ReserveParams = __Infer<typeof ReserveReducer>;
+export type SkipAgentContactParams = __Infer<typeof SkipAgentContactReducer>;
 export type UpdateJobParams = __Infer<typeof UpdateJobReducer>;
 

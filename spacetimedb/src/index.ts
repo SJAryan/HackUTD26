@@ -212,9 +212,21 @@ const agentContact = table(
   }
 );
 
+// TL-09: a resident's "Skip" on the agent offer. Final: after it, no lead can be created.
+// Kept apart from agent_contact so skips never change opt-in counts.
+const agentDecline = table(
+  { name: 'agent_decline' },
+  {
+    householdId: t.string().primaryKey(),
+    incidentId: t.string().index('btree'),
+    identity: t.identity(),
+    declinedAt: t.timestamp(),
+  }
+);
+
 const spacetimedb = schema({
   config, invite, member, incident, household, asset, driver,
-  route, routeReport, checkin, job, outbox, jobMessage, profile, agentContact,
+  route, routeReport, checkin, job, outbox, jobMessage, profile, agentContact, agentDecline,
 });
 export default spacetimedb;
 
@@ -594,7 +606,7 @@ export const enrollPreparedness = spacetimedb.reducer(
 );
 
 // Offered only after delivery, so it can never change who gets help or how fast.
-// "Skip" is a client action and calls nothing.
+// After skipAgentContact, the household's answer is final and no lead can be created.
 export const requestAgentContact = spacetimedb.reducer({ consentId: t.string() }, (ctx, { consentId }) => {
   const me = requireResident(ctx);
   if (!consentId) throw new SenderError('consentId is required');
@@ -605,6 +617,9 @@ export const requestAgentContact = spacetimedb.reducer({ consentId: t.string() }
   }
   const lead = ctx.db.agentContact.householdId.find(me.subjectId);
   if (lead) throw new SenderError(`conflict: ${me.subjectId} already has request L-${lead.id}`);
+  if (ctx.db.agentDecline.householdId.find(me.subjectId)) {
+    throw new SenderError('conflict: the resident skipped. Nothing was saved.');
+  }
   const p = ctx.db.profile.householdId.find(me.subjectId);
   if (!p) throw new SenderError(`rejected: ${me.subjectId} has no preparedness profile`);
   const delivered = [...ctx.db.job.householdId.filter(me.subjectId)].find(j => j.status === 'delivered');
@@ -612,6 +627,17 @@ export const requestAgentContact = spacetimedb.reducer({ consentId: t.string() }
   ctx.db.agentContact.insert({
     id: 0n, consentId, householdId: me.subjectId, incidentId: me.incidentId, identity: ctx.sender,
     jobId: delivered.id, preferredContact: p.preferredContact, consentedAt: ctx.timestamp,
+  });
+});
+
+// The resident declines the agent offer. Records the decline only; never creates a lead.
+export const skipAgentContact = spacetimedb.reducer(ctx => {
+  const me = requireResident(ctx);
+  if (ctx.db.agentDecline.householdId.find(me.subjectId)) return; // retry: no-op
+  const lead = ctx.db.agentContact.householdId.find(me.subjectId);
+  if (lead) throw new SenderError(`conflict: ${me.subjectId} already has request L-${lead.id}`);
+  ctx.db.agentDecline.insert({
+    householdId: me.subjectId, incidentId: me.incidentId, identity: ctx.sender, declinedAt: ctx.timestamp,
   });
 });
 
@@ -723,6 +749,16 @@ export const myAgentRequest = spacetimedb.view(
   ctx => {
     const me = ctx.db.member.identity.find(ctx.sender);
     return me?.role === 'resident' ? ctx.db.agentContact.householdId.find(me.subjectId) ?? undefined : undefined;
+  }
+);
+
+// Lets the resident's screen show "Skipped" after a reload instead of offering again.
+export const myAgentDecline = spacetimedb.view(
+  { name: 'my_agent_decline', public: true },
+  t.option(agentDecline.rowType),
+  ctx => {
+    const me = ctx.db.member.identity.find(ctx.sender);
+    return me?.role === 'resident' ? ctx.db.agentDecline.householdId.find(me.subjectId) ?? undefined : undefined;
   }
 );
 
