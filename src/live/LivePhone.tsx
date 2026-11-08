@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useReducer, useTable } from 'spacetimedb/react';
 import { reducers, tables } from '../module_bindings';
 import { Icon } from '../ui/icons';
+import { LiveAgentOffer } from './LiveConsent';
 import { errorText, hhmm, ms, newId, titleCase } from './model';
 
 type Pending = { cid: string; text: string; state: 'sending' | 'failed'; error?: string };
@@ -148,6 +149,11 @@ export function LivePhone({ as }: { as: 'driver' | 'resident' }) {
               )}
               {status.kind === 'error' && <p className="result result-conflict" role="alert"><Icon name="alert" size={15} /> {status.text}</p>}
             </section>
+            {as === 'resident' && job.status === 'delivered' && (
+              <div className="live-offer">
+                <LiveAgentOffer />
+              </div>
+            )}
             <Thread
               jobId={job.id}
               me={as}
