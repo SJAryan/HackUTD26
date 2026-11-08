@@ -144,6 +144,10 @@ function LiveDrawer({ h, c, incidentId, onClose }: { h: HouseholdRow; c: LiveCas
   const reserve = useReducer(reducers.reserve);
   const confirm = useReducer(reducers.confirmRouteReport);
   const ingest = useReducer(reducers.ingestCheckin);
+  const release = useReducer(reducers.releaseJob);
+  const [drivers] = useTable(tables.coordinatorDrivers);
+  const [assets] = useTable(tables.coordinatorAssets);
+  const [releaseState, setReleaseState] = useState<{ kind: 'idle' | 'sending' | 'error'; text?: string }>({ kind: 'idle' });
   const [replyErr, setReplyErr] = useState<string | null>(null);
   const [replySending, setReplySending] = useState<string | null>(null);
   const [routeId, setRouteId] = useState<string | null>(null);
@@ -199,9 +203,15 @@ function LiveDrawer({ h, c, incidentId, onClose }: { h: HouseholdRow; c: LiveCas
       .finally(() => setReplySending(null));
   };
 
+  // One report ID per report, reused only when retrying that same report, so a later
+  // report on the same route is never mistaken for a duplicate.
+  const pendingReports = useRef(new Map<string, string>());
   const confirmDelay = (rid: string) => {
     setDelayErr(null);
-    confirm({ reportId: `rep-${rid}-${DELAY_MIN}`, incidentId, routeId: rid, delayMin: DELAY_MIN }).catch((e: unknown) => setDelayErr(errorText(e)));
+    if (!pendingReports.current.has(rid)) pendingReports.current.set(rid, `rep-${rid}-${newId()}`);
+    confirm({ reportId: pendingReports.current.get(rid)!, incidentId, routeId: rid, delayMin: DELAY_MIN })
+      .then(() => pendingReports.current.delete(rid))
+      .catch((e: unknown) => setDelayErr(errorText(e)));
   };
 
   const scale = c.window ? [Math.min(c.window[0], ...c.options.map((o) => o.ready)) - 10 * 60_000, Math.max(c.window[1] ?? c.window[0], ...c.options.map((o) => o.ready)) + 10 * 60_000] : null;
@@ -308,6 +318,27 @@ function LiveDrawer({ h, c, incidentId, onClose }: { h: HouseholdRow; c: LiveCas
               );
             })}
           </ol>
+          {job.status === 'delivered' && (() => {
+            // Delivery alone keeps the battery and driver on this job; the coordinator returns
+            // them to the pool (A's releaseJob). The household stays Dispatched: help arrived.
+            const held = drivers.some((d) => d.activeJobId === job.id) || assets.some((a) => a.activeJobId === job.id);
+            if (!held) return <p className="sub"><Icon name="checkCircle" size={14} /> {job.assetId} and {titleCase(job.driverId)} are free for the next household.</p>;
+            const doRelease = () => {
+              if (releaseState.kind === 'sending') return;
+              setReleaseState({ kind: 'sending' });
+              release({ jobId: job.id, expectedVersion: job.version })
+                .then(() => setReleaseState({ kind: 'idle' }))
+                .catch((e: unknown) => setReleaseState({ kind: 'error', text: errorText(e) }));
+            };
+            return (
+              <>
+                <button className="btn btn-quiet btn-block" onClick={doRelease} disabled={releaseState.kind === 'sending'}>
+                  {releaseState.kind === 'sending' ? 'Releasing…' : `Release ${job.assetId} and ${titleCase(job.driverId)} for the next household`}
+                </button>
+                {releaseState.kind === 'error' && <p className="result result-conflict" role="alert"><Icon name="alert" size={15} /> {releaseState.text}</p>}
+              </>
+            );
+          })()}
           <h3>Thread</h3>
           <div className="drawer-thread">
             <Thread jobId={job.id} me="coordinator" canSend={false} />
