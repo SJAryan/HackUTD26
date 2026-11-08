@@ -38,7 +38,9 @@ import ClaimInviteReducer from "./claim_invite_reducer";
 import ConfirmRouteReportReducer from "./confirm_route_report_reducer";
 import CreateInviteReducer from "./create_invite_reducer";
 import IngestCheckinReducer from "./ingest_checkin_reducer";
+import PostJobMessageReducer from "./post_job_message_reducer";
 import ReserveReducer from "./reserve_reducer";
+import UpdateJobReducer from "./update_job_reducer";
 
 // Import all procedure arg schemas
 
@@ -51,8 +53,10 @@ import CoordinatorHouseholdsRow from "./coordinator_households_table";
 import CoordinatorJobsRow from "./coordinator_jobs_table";
 import CoordinatorRoutesRow from "./coordinator_routes_table";
 import DriverJobsRow from "./driver_jobs_table";
+import JobMessagesRow from "./job_messages_table";
 import MyIncidentRow from "./my_incident_table";
 import MyRoleRow from "./my_role_table";
+import ResidentJobsRow from "./resident_jobs_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -114,6 +118,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, DriverJobsRow),
+  jobMessages: __table({
+    name: 'job_messages',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, JobMessagesRow),
   myIncident: __table({
     name: 'my_incident',
     indexes: [
@@ -128,6 +139,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyRoleRow),
+  residentJobs: __table({
+    name: 'resident_jobs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ResidentJobsRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
@@ -136,7 +154,9 @@ const reducersSchema = __reducers(
   __reducerSchema("confirm_route_report", ConfirmRouteReportReducer),
   __reducerSchema("create_invite", CreateInviteReducer),
   __reducerSchema("ingest_checkin", IngestCheckinReducer),
+  __reducerSchema("post_job_message", PostJobMessageReducer),
   __reducerSchema("reserve", ReserveReducer),
+  __reducerSchema("update_job", UpdateJobReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */

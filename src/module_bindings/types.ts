@@ -116,6 +116,25 @@ export const Job = __t.object("Job", {
 });
 export type Job = __Infer<typeof Job>;
 
+export const JobMessage = __t.object("JobMessage", {
+  id: __t.u64(),
+  dedupeKey: __t.string(),
+  incidentId: __t.string(),
+  jobId: __t.u64(),
+  seq: __t.u32(),
+  kind: __t.string(),
+  senderRole: __t.string(),
+  senderLabel: __t.string(),
+  senderIdentity: __t.identity(),
+  clientMessageId: __t.string(),
+  text: __t.string(),
+  sentAt: __t.timestamp(),
+});
+export type JobMessage = __Infer<typeof JobMessage>;
+
+export const JobMessages = __t.object("JobMessages", {});
+export type JobMessages = __Infer<typeof JobMessages>;
+
 export const Member = __t.object("Member", {
   identity: __t.identity(),
   role: __t.string(),
@@ -142,6 +161,9 @@ export const Outbox = __t.object("Outbox", {
   createdAt: __t.timestamp(),
 });
 export type Outbox = __Infer<typeof Outbox>;
+
+export const ResidentJobs = __t.object("ResidentJobs", {});
+export type ResidentJobs = __Infer<typeof ResidentJobs>;
 
 export const Route = __t.object("Route", {
   id: __t.string(),

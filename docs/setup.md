@@ -1,4 +1,4 @@
-# Time Left: setup and shared contract (TL-01, TL-05)
+# Time Left: setup and shared contract (TL-01, TL-05, TL-06)
 
 Owner: A (backend and integration). Scaffolded with `spacetime init --template react-ts`.
 All data in the seed is synthetic.
@@ -53,6 +53,7 @@ identity, so run them as the identity that published the module.
 ```bash
 npm run stdb:reset:local && npm run check:tl01
 npm run stdb:reset:local && npm run check:tl05
+npm run stdb:reset:local && npm run check:tl06
 ```
 
 - **TL-01:** a bridge session records H17's 02:00 check-in; a coordinator session sees H17 change
@@ -66,6 +67,11 @@ npm run stdb:reset:local && npm run check:tl05
   that a cross-incident reserve (freeze asset or route for a tornado household) and a
   cross-incident invite (freeze driver or household for `tornado-1`) are rejected and write
   nothing. `RACE_REVERSE=1` sends coordinator 2's call first. Ends with `PASS: TL-05 last-battery race`.
+- **TL-06:** after Ana is assigned to H17, the resident asks "Can you use the side entrance?" and
+  Ana replies; both see the same ordered thread without refreshing. A repeated send appears once.
+  Resident H22 and driver Ben are refused and read nothing. Ana marks arrived and H17 confirms
+  delivery, with a stale or delayed update rejected. Resident H17 reconnects with the same token
+  and gets the full history back. Ends with `PASS: TL-06 job thread`.
 
 To point a check at another server, set `SPACETIMEDB_HOST`, `SPACETIMEDB_DB_NAME` and
 `SPACETIMEDB_SERVER` (the CLI nickname, e.g. `maincloud`).
@@ -88,10 +94,10 @@ await conn.reducers.claimInvite({ code }); // binds this session's identity to t
 
 | Role | `subjectId` | Can call | Can read (views) |
 |---|---|---|---|
-| `coordinator` | `''` | `ingestCheckin`, `confirmRouteReport`, `reserve` | `coordinator_*` for its incident |
-| `driver` | driver ID | nothing yet (TL-06) | `driver_jobs`: its own jobs only |
+| `coordinator` | `''` | `ingestCheckin`, `confirmRouteReport`, `reserve` | `coordinator_*` and `job_messages` for its incident |
+| `driver` | driver ID | `postJobMessage`, `updateJob` (`arrived`) on its jobs | `driver_jobs`, `job_messages`: its own jobs only |
 | `bridge` | `''` | `ingestCheckin` | `bridge_outbox` for its incident |
-| `resident` | household ID | nothing yet (TL-06/TL-09) | nothing yet |
+| `resident` | household ID | `postJobMessage`, `updateJob` (`delivered`) on its jobs | `resident_jobs`, `job_messages`: its own household only |
 
 A driver or resident invite is rejected unless that driver or household belongs to the invite's
 incident. Invite codes are single-use but do not expire; share them privately.
@@ -133,7 +139,8 @@ Use the generated bindings: `import { DbConnection, tables, reducers } from './m
 All tables are private. Clients subscribe to views: `tables.myRole`, `tables.myIncident`,
 `tables.coordinatorHouseholds`, `tables.coordinatorCheckins`, `tables.coordinatorAssets`,
 `tables.coordinatorDrivers`, `tables.coordinatorRoutes`, `tables.coordinatorJobs`,
-`tables.driverJobs` and `tables.bridgeOutbox`. A view change can arrive as a delete plus an
+`tables.driverJobs`, `tables.residentJobs`, `tables.jobMessages` and `tables.bridgeOutbox`.
+A view change can arrive as a delete plus an
 insert, so read the current rows rather than relying on `onUpdate`.
 
 Errors reject the reducer promise with a message. Messages starting `conflict:` mean someone
@@ -197,9 +204,43 @@ conn.reducers.reserve({
 `driver:ana`), `purpose`, a plain-text `body` and `status` `pending`. Marking an intent sent comes
 with TL-08.
 
-Not built yet: releasing an asset or driver, `updateJob` and `postJobMessage` (TL-06),
-`requestAgentContact` (TL-09), callback ownership and scheduled follow-up (TL-11), and the
-resident view.
+**`postJobMessage`** (D -> A; the job's resident or assigned driver):
+
+```ts
+conn.reducers.postJobMessage({
+  jobId,                              // from resident_jobs or driver_jobs (bigint)
+  clientMessageId: crypto.randomUUID(), // stable per message; retry with the same ID
+  text: 'Can you use the side entrance?', // 1-1000 characters after trimming
+});
+```
+
+- **Success:** a `job_message` row with the next `seq` for that job, `kind` `text`, the sender's
+  role and display label (driver name or household ID), and the server time. The sender comes
+  from the session, never from the arguments.
+- **Duplicate:** the same sender, job and `clientMessageId` again is a no-op.
+- **Rejected:** `forbidden:` for anyone who is not that job's resident or current driver;
+  empty or overlong text.
+- **Reading:** subscribe to `tables.jobMessages`, filter by `jobId` and sort by `seq`. Reconnecting
+  with the same token replays the full thread.
+
+**`updateJob`** (D -> A; the job's resident or assigned driver):
+
+```ts
+conn.reducers.updateJob({ jobId, expectedVersion: job.version, status: 'arrived' });
+```
+
+| `status` | Who | From | Result |
+|---|---|---|---|
+| `arrived` | assigned driver | `assigned` | job `version` + 1; thread event `[arrived] Ana arrived` |
+| `delivered` | resident | `arrived` | job `version` + 1; thread event `[delivered] H17 confirmed delivery` |
+
+A stale `expectedVersion` or wrong current status is a `conflict:`, so a delayed or duplicate
+ARRIVED cannot change the job again. The wrong role is `forbidden:`. Delivery does not yet free
+the driver or battery.
+
+Not built yet: releasing an asset or driver, `requestAgentContact` and enrollment (TL-09),
+callback ownership and scheduled follow-up (TL-11), and notifying the resident by Photon on
+arrival (TL-08).
 
 **Dispatch rules:** `spacetimedb/src/rules.ts` copies `readyAt` from C's unmerged TL-03 branch as
 a fixture. Once TL-03 is on main, its body becomes a re-export of
