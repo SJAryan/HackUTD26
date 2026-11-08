@@ -1,9 +1,9 @@
 // LIVE MODE helpers. Pure functions over the coordinator views (TL-05).
 import type { Timestamp } from 'spacetimedb';
 import type { Lane } from '../demo/fixture';
+import { evaluateOptions, readyAt, type DispatchOption } from '../../spacetimedb/src/domain/dispatch';
 
 const MIN = 60_000;
-export const ACT_BELOW = 15; // same threshold as the fixture: under +15 min is Act now
 
 export const ms = (t: Timestamp) => t.toDate().getTime();
 
@@ -11,15 +11,6 @@ const clock = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', ho
 export const hhmm = (t: number) => clock.format(t);
 
 type Legs = { driverToAssetMin: number; pickupMin: number; assetToHomeMin: number; setupMin: number; confirmedDelayMin: number };
-
-// Display copy of readyAt in spacetimedb/src/rules.ts (A's server copy of C's formula).
-// The server computes the committed ETA itself; this only previews it for the coordinator.
-export function readyAtMs(r: Legs, driverFreeAt: number, assetFreeAt: number, now: number) {
-  const atAsset = Math.max(now, driverFreeAt) + r.driverToAssetMin * MIN;
-  const depart = Math.max(atAsset, assetFreeAt) + r.pickupMin * MIN;
-  return depart + (r.assetToHomeMin + r.confirmedDelayMin + r.setupMin) * MIN;
-}
-
 type HouseholdRow = {
   id: string;
   version: number;
@@ -37,52 +28,68 @@ type AssetRow = FreeRow & { kind: string };
 export type LiveOption = { route: RouteRow; ready: number; margin: number | null; blocked: string | null };
 export type LiveCase = {
   lane: Lane;
+  reason: string; // C's reason for the lane, shown in the drawer
+  silent: boolean; // contact status, independent of urgency: an Act now case can also be silent
   observed: number | null;
   window: [number, number | null] | null;
   options: LiveOption[];
   best?: LiveOption;
 };
+// The household's current outreach round (coordinator_rounds), if one is open or silent.
+type RoundRow = { householdId: string; status: string; openedAt: Timestamp; dueAt: Timestamp };
 
-// margin = earliest time backup may run out - when help can be there, in whole minutes.
-export function evaluateHousehold(h: HouseholdRow, routes: readonly RouteRow[], drivers: readonly FreeRow[], assets: readonly AssetRow[], now: number): LiveCase {
+// Lanes come from C's evaluateOptions (spacetimedb/src/domain/dispatch.ts), the same pure
+// function the rules tests cover. Availability is A's concern, not C's: a busy, missing or
+// wrong-kind resource is shown with the reason it is blocked and never passed to C, so
+// "nothing free" lands in Act now.
+export function evaluateHousehold(h: HouseholdRow, routes: readonly RouteRow[], drivers: readonly FreeRow[], assets: readonly AssetRow[], round: RoundRow | undefined, now: number): LiveCase {
   const observed = h.lastObservedAt ? ms(h.lastObservedAt) : null;
   const lo = h.runtimeLowerMin;
   const hi = h.runtimeUpperMin;
   const window: [number, number | null] | null =
     observed !== null && lo !== undefined ? [observed + lo * MIN, hi === undefined ? null : observed + hi * MIN] : null;
 
-  const options = routes
+  const all = routes
     .filter((r) => r.householdId === h.id)
     .map((r) => {
       const d = drivers.find((x) => x.id === r.driverId);
       const a = assets.find((x) => x.id === r.assetId);
-      const ready = readyAtMs(r, d ? ms(d.freeAt) : now, a ? ms(a.freeAt) : now, now);
-      return {
-        route: r,
-        ready,
-        margin: window ? Math.floor((window[0] - ready) / MIN) : null,
-        // A missing driver or asset, or the wrong kind of asset, is never offered as free.
-        blocked:
-          !d ? 'driver not found'
-          : !a ? 'asset not found'
-          : a.kind !== h.need ? `${a.kind}, not ${h.need}`
-          : d.activeJobId !== undefined || a.activeJobId !== undefined ? 'busy'
-          : null,
+      const blocked =
+        !d ? 'driver not found'
+        : !a ? 'asset not found'
+        : a.kind !== h.need ? `${a.kind}, not ${h.need}`
+        : d.activeJobId !== undefined || a.activeJobId !== undefined ? 'busy'
+        : null;
+      const option: DispatchOption = {
+        routeId: r.id, driverId: r.driverId, assetId: r.assetId, assetKind: a?.kind ?? '',
+        driverFreeAt: d ? ms(d.freeAt) : now, assetFreeAt: a ? ms(a.freeAt) : now,
+        driverToAssetMin: r.driverToAssetMin, pickupMin: r.pickupMin, assetToHomeMin: r.assetToHomeMin,
+        setupMin: r.setupMin, confirmedDelayMin: r.confirmedDelayMin,
       };
+      return { route: r, option, blocked };
     });
-  // With a runtime, rank by margin; without one, the earliest arrival is the best we know.
-  // Known runtime with no free option stays Act now: uncovered work must surface (team spec, lanes).
-  const free = options.filter((o) => o.blocked === null);
-  const ranked = window ? free.sort((x, y) => y.margin! - x.margin!) : free.sort((x, y) => x.ready - y.ready);
-  const best = ranked[0];
 
-  const lane: Lane =
-    h.activeJobId !== undefined ? 'dispatched'
-    : observed === null ? 'silent'
-    : !window ? 'unknown'
-    : best && best.margin! >= ACT_BELOW ? 'watch'
-    : 'act';
-  return { lane, observed, window, options, best };
+  const active = round && (round.status === 'open' || round.status === 'silent') ? round : undefined;
+  const result = evaluateOptions(
+    {
+      householdId: h.id,
+      need: h.need,
+      evidence: observed === null ? undefined : { observedAt: observed, runtimeLowerMin: lo, runtimeUpperMin: hi },
+      round: active && { openedAt: ms(active.openedAt), dueAt: ms(active.dueAt), lastReplyAt: observed ?? undefined },
+    },
+    all.filter((o) => o.blocked === null).map((o) => o.option),
+    now,
+  );
+
+  // Every route is listed in the drawer; C's result supplies the ready time and margin.
+  const options: LiveOption[] = all.map(({ route, option, blocked }) => {
+    const r = result.options.find((x) => x.routeId === route.id);
+    const ready = r?.readyAt ?? readyAt(option, now);
+    return { route, ready, margin: window ? r?.marginLoMin ?? Math.floor((window[0] - ready) / MIN) : null, blocked };
+  });
+  const best = result.best && options.find((o) => o.route.id === result.best!.routeId);
+  const lane: Lane = h.activeJobId !== undefined ? 'dispatched' : result.lane === 'act_now' ? 'act' : result.lane;
+  return { lane, reason: result.reason, silent: result.silent, observed, window, options, best };
 }
 
 // Reducer errors arrive as rejected promises. The server prefixes them conflict:, forbidden: or rejected:.
