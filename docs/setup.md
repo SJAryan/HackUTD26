@@ -1,4 +1,4 @@
-# Time Left: setup and shared contract (TL-01, TL-05, TL-06, TL-09, TL-11)
+# Before Zero: setup and shared contract (TL-01, TL-05, TL-06, TL-09, TL-11, TL-18)
 
 Owner: A (backend and integration). Scaffolded with `spacetime init --template react-ts`.
 All data in the seed is synthetic.
@@ -56,6 +56,7 @@ npm run stdb:reset:local && npm run check:tl05
 npm run stdb:reset:local && npm run check:tl06
 npm run stdb:reset:local && npm run check:tl09
 npm run stdb:reset:local && npm run check:tl11
+npm run stdb:reset:local && npm run check:tl18
 ```
 
 - **TL-01:** a bridge session records H17's 02:00 check-in; a coordinator session sees H17 change
@@ -89,6 +90,13 @@ npm run stdb:reset:local && npm run check:tl11
   claimed, cancelled, and calling the sweep directly is refused. After delivery, `releaseJob`
   frees BAT-01 and Ana, and BAT-01 is reserved for H22. Ends with
   `PASS: TL-11 follow-ups and release`.
+- **TL-18:** checks the display labels and that the seed clock and every `freeAt` are now. Plays
+  H17's story live (R4 +17, R4-ALT +6, then R4 -3 after the detour; server ETA = reserve time +
+  24 min). It builds up state in every lead-incident table, confirms a coordinator and an
+  unknown incident are refused, then resets the lead incident. Every table is back to 0 and the
+  seed is restored with a new clock. Members, invites and config are unchanged, every session
+  keeps its role and the second incident is untouched. The same story then replays with the
+  same IDs. Ends with `PASS: TL-18 real-time seed and repeatable reset`.
 
 To point a check at another server, set `SPACETIMEDB_HOST`, `SPACETIMEDB_DB_NAME` and
 `SPACETIMEDB_SERVER` (the CLI nickname, e.g. `maincloud`).
@@ -124,30 +132,66 @@ Every session can read `my_role` and `my_incident`. The browser keeps its identi
 
 ## Seed
 
-**Tornado (`tornado-1`)**, clock 2026-11-08 02:00 America/Chicago (08:00 UTC):
+**Incident IDs are internal; the demo shows `kind` and `name`.** The IDs stay as they are so C's
+and B's fixtures and tests keep working. Screens must show the incident row's `name`, never the
+ID:
+
+| ID | Role in the demo | `kind` / `name` shown |
+|---|---|---|
+| `tornado-1` | **Lead incident** (H17 story) | `freeze` / "Winter freeze outage (synthetic)" |
+| `freeze-1` | Second incident | `tornado` / "Tornado outage (synthetic)" |
+
+**Real time.** Each seed runs at publish time and again on every `resetIncident`. The incident
+`clockAt` and every driver's and asset's `freeAt` are set to that moment, so the server's ETAs
+(`reserve` uses `ctx.timestamp`) and the board's live margins agree at any time of day. A
+report of 30-60 minutes gives C's numbers: R4 +17, R4-ALT +6, and R4 -3 after a confirmed
+20-minute detour (Watch, then Act now with R4-ALT best). Margins are whole minutes, rounded
+down, so each minute that passes after the report takes one off.
+
+**Lead (`tornado-1`)**, clock = now:
 
 | Table | Rows |
 |---|---|
 | `household` | `H17`, `H22` (silent), both need `battery` |
-| `asset` | `BAT-01`, battery, free at the incident clock |
-| `driver` | `ana` (Ana), `ben` (Ben), free at the incident clock |
-| `route` | `R4` H17/Ana/BAT-01, ready 02:13; `R4-ALT` H17/Ana/BAT-01, ready 02:24; `R7` H22/Ben/BAT-01, ready 02:19 |
+| `asset` | `BAT-01`, battery, free at the clock |
+| `driver` | `ana` (Ana), `ben` (Ben), free at the clock |
+| `route` | `R4` H17/Ana/BAT-01, ready clock+13; `R4-ALT` H17/Ana/BAT-01, ready clock+24; `R7` H22/Ben/BAT-01, ready clock+19 |
 
 H17, R4 and R4-ALT match C's TL-03 tornado fixture. R7 and Ben are A's race seed until C's
 fixture covers H22.
 
-**Freeze (`freeze-1`)**, clock 2026-01-20 06:00 America/Chicago (12:00 UTC), IDs and travel
-values from C's TL-03 freeze fixture (PR #20):
+**Second (`freeze-1`)**, clock = now, IDs and travel values from C's TL-03 freeze fixture (PR #20):
 
 | Table | Rows |
 |---|---|
 | `household` | `F03` needs `generator`; `F09`, `F14` (silent) need `battery` |
 | `asset` | `GEN-02` generator, `BAT-07` battery |
 | `driver` | `leo` (Leo) |
-| `route` | `FZ-R1` F03/Leo/GEN-02, ready 06:18; `FZ-R2` F09/Leo/BAT-07, ready 06:23 |
+| `route` | `FZ-R1` F03/Leo/GEN-02, ready clock+18; `FZ-R2` F09/Leo/BAT-07, ready clock+23 |
 
-The Before Zero update makes the freeze the lead incident, with H17 registering for it; that
-re-seed waits for C's numbers.
+The ~200 synthetic households (#41) are not seeded yet.
+
+## Demo reset and invites (TL-18)
+
+Owner only: run these as the identity that published the module. Point them at Maincloud with
+`SPACETIMEDB_SERVER=maincloud SPACETIMEDB_DB_NAME=time-left-hackutd26`.
+
+```bash
+npm run demo:reset                     # both incidents back to the seed, re-anchored to now
+npm run demo:reset -- tornado-1        # just the lead incident
+DEMO_FOLLOWUP_SEC=60 npm run demo:reset # also sets the follow-up interval (default 300)
+npm run demo:invites                   # prints 7 fresh single-use invites and where each goes
+```
+
+- `reset_incident(incidentId)` clears that incident's check-ins, jobs, job messages, outbox
+  intents, route reports, releases, rounds, follow-ups, audit, profiles, agent contacts and
+  declines. It then recreates its households, assets, drivers and routes from the seed (so every
+  `activeJobId`, version, runtime and confirmed delay is back to the seed) with the clock at now.
+- It never touches `member`, `invite` or `config`, so claimed roles keep working and their
+  household and driver IDs exist again. Other incidents are untouched.
+- `demo:reset` also restarts the follow-up sweep, which a publish that keeps data does not.
+- `demo:invites` mints a coordinator for each incident, drivers Ana and Ben, residents H17 and
+  H22, and one bridge. Codes go to the terminal only; never commit or paste them in the repo.
 
 ## Interfaces available now
 
@@ -377,6 +421,11 @@ spacetime publish --server maincloud --module-path spacetimedb time-left-hackutd
 ```
 
 The publishing identity becomes the owner who creates invites on Maincloud.
+
+Maincloud is behind main (TL-09 and TL-11 added tables), so it needs that republish before
+registration or follow-ups work live. Before a recording or a live run, the owner runs
+`demo:reset` against Maincloud (see "Demo reset and invites"). Run `demo:invites` only when
+someone needs a new role.
 
 ## Known issues
 
