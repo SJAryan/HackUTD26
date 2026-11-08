@@ -8,7 +8,8 @@ import { ApiError, Photon } from "@photon-ai/api";
 import { configuration } from "./agent.ts";
 import { handle, householdFor, inboundText, type Deps, type PhotonItem } from "./inbound.ts";
 import { classifySendError, processOutbox, type OutboxDeps, type SentLog, type Space } from "./outbox.ts";
-import { DB, HOST, connect, finish, ingestVia, requireBridgeRole } from "./stdb.ts";
+import { describeReceipt } from "./receipt.ts";
+import { DB, HOST, checkinReceipt, connect, finish, ingestVia, requireBridgeRole } from "./stdb.ts";
 
 const STATE_FILE = new URL("./.bridge-state.json", import.meta.url);
 const POLL_MS = 2_000;
@@ -43,8 +44,13 @@ try {
   await requireBridgeRole(conn, binding.incidentId);
   const db = conn;
 
+  const ingest = ingestVia(db);
   const deps: Deps = {
-    ingest: ingestVia(db),
+    // After the reducer returns, confirm the check-in landed via the bridge_checkins view (log only).
+    ingest: async (a) => {
+      await ingest(a);
+      console.log(`LIVE ${a.eventId} ${describeReceipt(await checkinReceipt(db, a.eventId))}`);
+    },
     reply: async (to, parentMessageId, text) => {
       try {
         await photon.projects.sendMessage({
