@@ -43,6 +43,7 @@ import EnrollPreparednessReducer from "./enroll_preparedness_reducer";
 import IngestCheckinReducer from "./ingest_checkin_reducer";
 import OpenCheckinRoundReducer from "./open_checkin_round_reducer";
 import PostJobMessageReducer from "./post_job_message_reducer";
+import RecordCallAttemptReducer from "./record_call_attempt_reducer";
 import ReleaseJobReducer from "./release_job_reducer";
 import RequestAgentContactReducer from "./request_agent_contact_reducer";
 import ReserveReducer from "./reserve_reducer";
@@ -57,6 +58,7 @@ import UpdateJobReducer from "./update_job_reducer";
 import BridgeCheckinsRow from "./bridge_checkins_table";
 import BridgeOutboxRow from "./bridge_outbox_table";
 import CoordinatorAssetsRow from "./coordinator_assets_table";
+import CoordinatorCallAttemptsRow from "./coordinator_call_attempts_table";
 import CoordinatorCheckinsRow from "./coordinator_checkins_table";
 import CoordinatorConfirmedNeedsRow from "./coordinator_confirmed_needs_table";
 import CoordinatorDriversRow from "./coordinator_drivers_table";
@@ -104,6 +106,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, CoordinatorAssetsRow),
+  coordinatorCallAttempts: __table({
+    name: 'coordinator_call_attempts',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, CoordinatorCallAttemptsRow),
   coordinatorCheckins: __table({
     name: 'coordinator_checkins',
     indexes: [
@@ -264,6 +273,7 @@ const reducersSchema = __reducers(
   __reducerSchema("ingest_checkin", IngestCheckinReducer),
   __reducerSchema("open_checkin_round", OpenCheckinRoundReducer),
   __reducerSchema("post_job_message", PostJobMessageReducer),
+  __reducerSchema("record_call_attempt", RecordCallAttemptReducer),
   __reducerSchema("release_job", ReleaseJobReducer),
   __reducerSchema("request_agent_contact", RequestAgentContactReducer),
   __reducerSchema("reserve", ReserveReducer),

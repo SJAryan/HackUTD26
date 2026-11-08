@@ -15,6 +15,7 @@ import EnrollPreparednessReducer from "../enroll_preparedness_reducer";
 import IngestCheckinReducer from "../ingest_checkin_reducer";
 import OpenCheckinRoundReducer from "../open_checkin_round_reducer";
 import PostJobMessageReducer from "../post_job_message_reducer";
+import RecordCallAttemptReducer from "../record_call_attempt_reducer";
 import ReleaseJobReducer from "../release_job_reducer";
 import RequestAgentContactReducer from "../request_agent_contact_reducer";
 import ReserveReducer from "../reserve_reducer";
@@ -32,6 +33,7 @@ export type EnrollPreparednessParams = __Infer<typeof EnrollPreparednessReducer>
 export type IngestCheckinParams = __Infer<typeof IngestCheckinReducer>;
 export type OpenCheckinRoundParams = __Infer<typeof OpenCheckinRoundReducer>;
 export type PostJobMessageParams = __Infer<typeof PostJobMessageReducer>;
+export type RecordCallAttemptParams = __Infer<typeof RecordCallAttemptReducer>;
 export type ReleaseJobParams = __Infer<typeof ReleaseJobReducer>;
 export type RequestAgentContactParams = __Infer<typeof RequestAgentContactReducer>;
 export type ReserveParams = __Infer<typeof ReserveReducer>;

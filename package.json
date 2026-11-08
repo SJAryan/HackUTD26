@@ -16,6 +16,7 @@
     "check:tl09": "tsx scripts/consent-check.ts",
     "check:tl11": "tsx scripts/followup-check.ts",
     "check:tl12": "tsx scripts/stale-eta-check.ts",
+    "check:tl14": "tsx scripts/call-check.ts",
     "check:tl15": "tsx scripts/confirm-need-check.ts",
     "check:tl20": "tsx scripts/driver-stop-check.ts",
     "check:tl18": "tsx scripts/reset-check.ts",

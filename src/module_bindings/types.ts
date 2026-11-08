@@ -45,6 +45,17 @@ export type BridgeCheckins = __Infer<typeof BridgeCheckins>;
 export const BridgeOutbox = __t.object("BridgeOutbox", {});
 export type BridgeOutbox = __Infer<typeof BridgeOutbox>;
 
+export const CallAttempt = __t.object("CallAttempt", {
+  key: __t.string(),
+  incidentId: __t.string(),
+  followupId: __t.u64(),
+  householdId: __t.string(),
+  outcome: __t.string(),
+  recordedBy: __t.identity(),
+  recordedAt: __t.timestamp(),
+});
+export type CallAttempt = __Infer<typeof CallAttempt>;
+
 export const Checkin = __t.object("Checkin", {
   eventId: __t.string(),
   incidentId: __t.string(),
@@ -98,6 +109,9 @@ export type ConfirmedNeedRow = __Infer<typeof ConfirmedNeedRow>;
 
 export const CoordinatorAssets = __t.object("CoordinatorAssets", {});
 export type CoordinatorAssets = __Infer<typeof CoordinatorAssets>;
+
+export const CoordinatorCallAttempts = __t.object("CoordinatorCallAttempts", {});
+export type CoordinatorCallAttempts = __Infer<typeof CoordinatorCallAttempts>;
 
 export const CoordinatorCheckins = __t.object("CoordinatorCheckins", {});
 export type CoordinatorCheckins = __Infer<typeof CoordinatorCheckins>;
